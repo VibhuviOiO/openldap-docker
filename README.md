@@ -1,2 +1,1 @@
-# openldap-tutorial
-OpenLDAP Tutorial
+# OpenLDAP Tutorial
