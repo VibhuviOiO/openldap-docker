@@ -19,8 +19,8 @@ services:
       - "1389:1389"
       - "1636:1636"
     volumes:
-      - /home/balu/openldap/openldap-tutorial/single-node/data:/bitnami/openldap
+      - openldap_data:/bitnami/openldap
 
 volumes:
-  openldap5:
+  openldap_data:
     driver: local
