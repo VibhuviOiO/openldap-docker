@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  openldap5:
+    image: bitnami/openldap:latest
+    container_name: openldap
+    hostname: openldap
+    environment:
+      - LDAP_ROOT=dc=jinna,dc=com
+      - LDAP_ADMIN_USERNAME=ldap_admin
+      - LDAP_ADMIN_PASSWORD=adminpassword1
+      - LDAP_ADMIN_DN=cn=ldap_admin,ou=users,dc=jinna,dc=com
+      - LDAP_USERS=customuser1
+      - LDAP_PASSWORDS=custompassword1
+      - LDAP_ALLOW_ANON_BINDING=no
+      - LDAP_USER_DC=users
+      - LDAP_GROUP_DC=groups
+    ports:
+      - "1389:1389"
+      - "1636:1636"
+    volumes:
+      - ./data/openldap:/bitnami/openldap
