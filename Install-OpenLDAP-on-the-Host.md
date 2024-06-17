@@ -65,12 +65,10 @@ If the configuration prompt doesn't appear, reconfigure using:
 sudo dpkg-reconfigure slapd
 ```
 
-#### Start and enable
-To start on reboot enable the slapd service 
+#### Start and check the status
 
 ```bash
 sudo systemctl start slapd
-sudo systemctl status slapd
 sudo systemctl status slapd
 ```
 #### Initialise the LDAP directory
@@ -118,3 +116,10 @@ objectClass: organization
 o: JinnaBalu Inc
 dc: jinnabalu
 ```
+
+**Enable**
+Set up LDAP to start on boot:
+```bash
+sudo systemctl enable slapd
+```
+This concludes the OpenLDAP server is now runing on your host
