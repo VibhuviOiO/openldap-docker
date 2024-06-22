@@ -9,6 +9,16 @@ Lightweight Directory Access Protocol (LDAP)
 - 1.1 [Pre-requisites](https://github.com/jinnabaalu/openldap-tutorial/blob/main/prerequisites.md)
 - 1.2 [Run the openldap container]()
 
+`openldap` default conf, schemas, certs are available in the container at the following
+```bash
+$ cd /opt/bitnami/openldap/etc/ 
+$ ls
+certs  
+ldap.conf  
+schema  
+slapd.d
+```
+
 ### 2. On the Host
 
 In this tutorial I am using the raspberry-pi, installed docker and docker-compose to run the ldap as container.
