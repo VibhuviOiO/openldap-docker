@@ -4,6 +4,25 @@
 
 Lightweight Directory Access Protocol (LDAP)
 
+```mermaid
+---
+title: Goal
+---
+flowchart TD
+    A[dc=com] --> B[dc=containertalks,dc=com]
+    B --> C[ou=finance,dc=containertalks,dc=com]
+    B --> D[ou=administration,dc=containertalks,dc=com]
+    C --> E[cn: ram<br>sn: Ram<br>givenName: Ram<br>mail: ram@containertalks.com<br>uid: ram]
+    C --> F[cn: shyam<br>sn: Shyam<br>givenName: Shyam<br>mail: shyam@containertalks.com<br>uid: shyam]
+    D --> G[cn: radha<br>sn: Radha<br>givenName: Radha<br>mail: radha@containertalks.com<br>uid: radha]
+    D --> H[cn: krishna<br>sn: Krishna<br>givenName: Krishna<br>mail: krishna@containertalks.com<br>uid: krishna]
+    D --> I[cn: balarama<br>sn: Balarama<br>givenName: Balarama<br>mail: balarama123@containertalks.com<br>uid: balarama]
+
+    style C fill:#f9f,stroke:#333,stroke-width:2px
+    style D fill:#f9f,stroke:#333,stroke-width:2px
+    style I fill:#c2e0c6,stroke:#333,stroke-width:2px
+```
+
 ### 1. Docker
 
 - 1.1 [Pre-requisites](https://github.com/jinnabaalu/openldap-tutorial/blob/main/prerequisites.md)

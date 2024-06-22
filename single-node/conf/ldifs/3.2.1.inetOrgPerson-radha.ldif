@@ -1,0 +1,9 @@
+# User Radha in Administration
+dn: cn=radha,ou=administration,dc=containertalks,dc=com
+objectClass: inetOrgPerson
+cn: radha
+sn: Radha
+givenName: Radha
+mail: radha@containertalks.com
+uid: radha
+userPassword: {SSHA}nxzmSAYRzV0XFapY0QueUCKEtM+6at4u

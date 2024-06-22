@@ -1,0 +1,7 @@
+# Containertalks Inc
+dn: dc=containertalks,dc=com
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: Containertalks Inc
+dc: containertalks

@@ -1,0 +1,10 @@
+# Add balarama as a person
+dn: cn=balarama,ou=administration,dc=containertalks,dc=com
+objectClass: inetOrgPerson
+objectClass: person
+cn: balarama
+sn: Balarama
+givenName: Balarama
+mail: balarama123@containertalks.com
+uid: balarama
+userPassword: {SSHA}nxzmSAYRzV0XFapY0QueUCKEtM+6at4u

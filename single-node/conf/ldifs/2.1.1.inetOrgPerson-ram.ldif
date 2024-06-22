@@ -1,0 +1,9 @@
+# User Ram in Finance
+dn: cn=ram,ou=finance,dc=containertalks,dc=com
+objectClass: inetOrgPerson
+cn: ram
+sn: Ram
+givenName: Ram
+mail: ram@containertalks.com
+uid: ram
+userPassword: {SSHA}nxzmSAYRzV0XFapY0QueUCKEtM+6at4u

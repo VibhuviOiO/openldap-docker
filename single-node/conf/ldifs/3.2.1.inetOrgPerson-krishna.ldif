@@ -1,0 +1,10 @@
+
+# User Krishna in Administration
+dn: cn=krishna,ou=administration,dc=containertalks,dc=com
+objectClass: inetOrgPerson
+cn: krishna
+sn: Krishna
+givenName: Krishna
+mail: krishna@containertalks.com
+uid: krishna
+userPassword: {SSHA}nxzmSAYRzV0XFapY0QueUCKEtM+6at4u
