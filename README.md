@@ -5,9 +5,6 @@
 Lightweight Directory Access Protocol (LDAP)
 
 ```mermaid
----
-title: Goal
----
 flowchart TD
     A[dc=com] --> B[dc=containertalks,dc=com]
     B --> C[ou=finance,dc=containertalks,dc=com]
@@ -18,9 +15,9 @@ flowchart TD
     D --> H[cn: krishna<br>sn: Krishna<br>givenName: Krishna<br>mail: krishna@containertalks.com<br>uid: krishna]
     D --> I[cn: balarama<br>sn: Balarama<br>givenName: Balarama<br>mail: balarama123@containertalks.com<br>uid: balarama]
 
-    style C fill:#f9f,stroke:#333,stroke-width:2px
-    style D fill:#f9f,stroke:#333,stroke-width:2px
-    style I fill:#c2e0c6,stroke:#333,stroke-width:2px
+    style C fill:#b6f8a5,stroke:#000,stroke-width:2px
+    style D fill:#b6f8a5,stroke:#333,stroke-width:2px
+    style I fill:#c2c6c2,stroke:#333,stroke-width:2px
 ```
 
 ### 1. Docker
