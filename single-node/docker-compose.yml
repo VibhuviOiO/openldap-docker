@@ -1,6 +1,6 @@
 services:
   openldap:
-    image: bitnami/openldap:latest
+    image: bitnami/openldap:2.4.49
     container_name: openldap
     hostname: openldap
     environment:
