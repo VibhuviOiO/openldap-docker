@@ -43,10 +43,8 @@ In this tutorial I am using the raspberry-pi, installed docker and docker-compos
 - 2.2. [Understanding file structure](https://github.com/jinnabaalu/openldap-tutorial/blob/main/2.2.Understanding-filep-structure.md)
 
 ### 3. Common Operations
-
-- 3.1 [Initialize LDAP](https://github.com/jinnabaalu/openldap-tutorial/blob/main/3.1.Initialise-LDAP.md)
-- 3.2 [LDAP Operations](https://github.com/jinnabaalu/openldap-tutorial/blob/main/3.2.LDAPOperations.md)
-- 3.3 [Backup and Restore](https://github.com/jinnabaalu/openldap-tutorial/blob/main/3.3.Backup-and-Restore.md)
+- 3.1 [LDAP Operations](https://github.com/jinnabaalu/openldap-tutorial/blob/main/3.2.LDAPOperations.md)
+- 3.2 [Backup and Restore](https://github.com/jinnabaalu/openldap-tutorial/blob/main/3.2.Backup-and-Restore.md)
 
 ###### Common LDAP Terms and Concepts
 
