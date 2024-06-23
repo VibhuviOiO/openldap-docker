@@ -1,9 +1,12 @@
 # User Ram in Finance
 dn: cn=ram,ou=finance,dc=containertalks,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
 objectClass: inetOrgPerson
 cn: ram
 sn: Ram
 givenName: Ram
 mail: ram@containertalks.com
 uid: ram
-userPassword: {SSHA}nxzmSAYRzV0XFapY0QueUCKEtM+6at4u
+userPassword: {SSHA}qBR9xl4DgDbHt2ru3Rr2i09Iqe4cMzNv
