@@ -1,8 +1,5 @@
 # User Ram in Finance
 dn: cn=ram,ou=finance,dc=containertalks,dc=com
-objectClass: top
-objectClass: person
-objectClass: organizationalPerson
 objectClass: inetOrgPerson
 cn: ram
 sn: Ram

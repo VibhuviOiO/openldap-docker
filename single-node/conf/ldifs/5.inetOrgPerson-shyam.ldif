@@ -1,8 +1,5 @@
 # User Shyam in Finance
 dn: cn=shyam,ou=finance,dc=containertalks,dc=com
-objectClass: top
-objectClass: person
-objectClass: organizationalPerson
 objectClass: inetOrgPerson
 cn: shyam
 sn: Shyam

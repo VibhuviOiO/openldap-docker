@@ -1,0 +1,9 @@
+dn: cn=ram,ou=finance,dc=containertalks,dc=com
+changetype: modify
+replace: objectClass
+objectClass: inetOrgPerson
+
+dn: cn=shyam,ou=finance,dc=containertalks,dc=com
+changetype: modify
+replace: objectClass
+objectClass: inetOrgPerson
