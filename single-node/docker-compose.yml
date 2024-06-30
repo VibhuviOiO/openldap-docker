@@ -2,6 +2,9 @@ services:
   openldap:
     image: bitnami/openldap:latest
     container_name: openldap
+    networks:
+      - openldap
+    restart: always
     user: root
     env_file:
       - .env
@@ -11,3 +14,6 @@ services:
       - ./conf/ldifs:/ldifs
       - ./conf/schemas:/schemas
       - ./data/openldap_data:/bitnami/openldap
+networks:
+  openldap:
+    external: true

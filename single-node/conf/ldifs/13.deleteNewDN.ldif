@@ -1,0 +1,2 @@
+dn: olcDatabase={4}mdb,cn=config
+changetype: delete
