@@ -1,3 +1,80 @@
+# Data and schemas
 data/
 copy-schema/
+
+# Logs - keep directory structure but ignore log files
+logs/
+*.log
+*.log-*
+*.gz
+!logs/.gitkeep
+
+# Environment files - IMPORTANT: Never commit passwords!
+.env
+.env.local
+.env.*.local
+**/.env
+**/logs/*.log
+
+# Docker volumes
+ldap-data/
+ldap-config/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+dist-ssr/
+*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
+
+# Password cache
+web/backend/.cache/
+.cache/
+
+# Build artifacts
+*.egg-info/
+build/
+*.whl
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+.temp/
+tmp/
+
+# SSL certificates (if generated locally)
+*.pem
+*.key
+*.crt
+*.csr
+
+# OS
+Thumbs.db
+.Spotlight-V100
+.Trashes

@@ -1,0 +1,4 @@
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: dc=vibhuvioio,dc=com

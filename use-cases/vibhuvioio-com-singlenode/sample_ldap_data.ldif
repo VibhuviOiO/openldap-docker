@@ -1,0 +1,367 @@
+Keeping thr Directory page as is create the other vioews to show based on the user If you look at the RR.ldif custom scipt. WIll provide you some data 
+
+this data we should not copy into the project but it should create the similar OR simlar groups and users
+
+dn: dc=vibhuvioio,dc=com
+dc: vibhuvioio
+objectClass: top
+objectClass: domain
+structuralObjectClass: domain
+entryUUID: d1cabd26-656f-102d-8bc0-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000000#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+contextCSN: 20250404121653.000000Z#000000#000#000000
+contextCSN: 20260106112229.387974Z#000000#592#000000
+
+dn: ou=Hosts,dc=vibhuvioio,dc=com
+ou: Hosts
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1cbd0f8-656f-102d-8bc1-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000001#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: ou=Rpc,dc=vibhuvioio,dc=com
+ou: Rpc
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1cc5d34-656f-102d-8bc2-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000002#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: ou=Services,dc=vibhuvioio,dc=com
+ou: Services
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1ccb50e-656f-102d-8bc3-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000003#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: nisMapName=netgroup.byuser,dc=vibhuvioio,dc=com
+nisMapName: netgroup.byuser
+objectClass: top
+objectClass: nisMap
+structuralObjectClass: nisMap
+entryUUID: d1ccfffa-656f-102d-8bc4-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000004#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: ou=Mounts,dc=vibhuvioio,dc=com
+ou: Mounts
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1cda13a-656f-102d-8bc5-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000005#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: ou=Networks,dc=vibhuvioio,dc=com
+ou: Networks
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1cde866-656f-102d-8bc6-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000006#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: ou=People,dc=vibhuvioio,dc=com
+ou: People
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1ce35d2-656f-102d-8bc7-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000007#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: ou=Group,dc=vibhuvioio,dc=com
+ou: Group
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1ce5346-656f-102d-8bc8-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000008#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: ou=Netgroup,dc=vibhuvioio,dc=com
+ou: Netgroup
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1ce8d84-656f-102d-8bc9-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#000009#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: ou=Protocols,dc=vibhuvioio,dc=com
+ou: Protocols
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1ced2f8-656f-102d-8bca-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#00000a#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: ou=Aliases,dc=vibhuvioio,dc=com
+ou: Aliases
+objectClass: top
+objectClass: organizationalUnit
+structuralObjectClass: organizationalUnit
+entryUUID: d1cf2028-656f-102d-8bcb-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#00000b#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: nisMapName=netgroup.byhost,dc=vibhuvioio,dc=com
+nisMapName: netgroup.byhost
+objectClass: top
+objectClass: nisMap
+structuralObjectClass: nisMap
+entryUUID: d1cf6dda-656f-102d-8bcc-9dd2728f1ebe
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20081223190116Z
+entryCSN: 20081223190116.000000Z#00000c#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20081223190116Z
+
+dn: uid=yury,ou=People,dc=vibhuvioio,dc=com
+uid: yury
+cn: Yury
+objectClass: account
+objectClass: posixAccount
+objectClass: top
+objectClass: shadowAccount
+userPassword:: e2NyeXB0fSQxJEFUczdYV2hzJEhxcFNsUy5PY3c4L0RxZ0lSVnVzYy4=
+shadowLastChange: 14448
+shadowMax: 99999
+shadowWarning: 7
+loginShell: /bin/bash
+uidNumber: 1033
+gidNumber: 100
+homeDirectory: /home/yury
+gecos: Yury
+structuralObjectClass: account
+entryUUID: 675f5248-0dae-102e-9fd5-834350940acb
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20090725213231Z
+o: TRUE
+entryCSN: 20140121185521.000000Z#00000c#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20140121185521Z
+
+dn: uid=vlad,ou=People,dc=vibhuvioio,dc=com
+structuralObjectClass: account
+entryUUID: b8faf728-1a48-102e-9fd6-834350940acb
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20090810222724Z
+uid: vlad
+cn: vlad
+objectClass: account
+objectClass: posixAccount
+objectClass: top
+objectClass: shadowAccount
+shadowMax: 99999
+shadowWarning: 7
+loginShell: /bin/bash
+uidNumber: 1034
+gidNumber: 100
+homeDirectory: /home/vlad
+userPassword:: e2NyeXB0fSQxJERUSzAwME9CJGw3WXMuLm5iU0xWcy9FdVZGbmY0azA=
+shadowLastChange: 14888
+o: TRUE
+entryCSN: 20140121185521.000000Z#000007#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20140121185521Z
+
+dn: uid=manish,ou=People,dc=vibhuvioio,dc=com
+uid: manish
+cn: Manish Katyal
+objectClass: account
+objectClass: posixAccount
+objectClass: top
+objectClass: shadowAccount
+userPassword:: e2NyeXB0fSQxJG9DcUgxRzdKJFhUNndEOExsellrS25xYVd3L2ZLLzA=
+shadowLastChange: 14544
+shadowMax: 99999
+shadowWarning: 7
+loginShell: /bin/bash
+uidNumber: 1038
+gidNumber: 100
+homeDirectory: /home/manish
+gecos: Manish Katyal
+structuralObjectClass: account
+entryUUID: 4ec7783c-73b1-102e-9fdc-834350940acb
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20091202171017Z
+o: TRUE
+entryCSN: 20140121185436.000000Z#000022#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20140121185436Z
+
+
+
+dn: cn=crowd-administrators,ou=Groups,dc=vibhuvioio,dc=com
+objectClass: groupOfUniqueNames
+uniqueMember: uid=jinna.baalu,ou=people,dc=vibhuvioio,dc=com
+structuralObjectClass: groupOfUniqueNames
+entryUUID: da1fb7a6-5f30-1031-9d80-07e3eb04f306
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20120710231515Z
+cn: crowd-administrators
+entryCSN: 20250313121327.739350Z#000000#592#000000
+modifiersName: cn=manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20250313121327Z
+
+
+dn: cn=bamboo-admin,ou=Groups,dc=vibhuvioio,dc=com
+objectClass: groupOfUniqueNames
+uniqueMember: uid=jinna.baalu,ou=people,dc=vibhuvioio,dc=com
+structuralObjectClass: groupOfUniqueNames
+entryUUID: d836b7e6-5f35-1031-9d81-07e3eb04f306
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20120710235059Z
+cn: bamboo-admin
+description:: IA==
+entryCSN: 20251006053304.788424Z#000000#592#000000
+modifiersName: cn=manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20251006053304Z
+
+dn: cn=Stash Ops,ou=Groups,dc=vibhuvioio,dc=com
+objectClass: groupOfUniqueNames
+uniqueMember: uid=jinna.baalu,ou=people,dc=vibhuvioio,dc=com
+structuralObjectClass: groupOfUniqueNames
+entryUUID: 901db44c-7c43-1032-9c66-9329b69787cb
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20130708175713Z
+cn: Stash Ops
+entryCSN: 20250721060459.232286Z#000000#592#000000
+modifiersName: cn=manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20250721060459Z
+
+dn: cn=Stash Dev,ou=Groups,dc=vibhuvioio,dc=com
+objectClass: groupOfUniqueNames
+uniqueMember: uid=jinna.baalu,ou=people,dc=vibhuvioio,dc=com
+structuralObjectClass: groupOfUniqueNames
+entryUUID: 97c6ada2-7c43-1032-9c67-9329b69787cb
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20130708175726Z
+cn: Stash Dev
+description:: IA==
+entryCSN: 20251216053138.868707Z#000000#592#000000
+modifiersName: cn=manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20251216053138Z
+
+dn: cn=Ops,ou=Groups,dc=vibhuvioio,dc=com
+objectClass: groupOfUniqueNames
+uniqueMember: uid=jinna.baalu,ou=people,dc=vibhuvioio,dc=com
+uniqueMember: uid=umesh.golla,ou=people,dc=vibhuvioio,dc=com
+structuralObjectClass: groupOfUniqueNames
+entryUUID: 90aec88c-e828-1032-9156-b5f1453d65e1
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20131123011603Z
+cn: Ops
+entryCSN: 20241115134344.000000Z#000000#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20241115134344Z
+
+
+dn: cn=Stash QA,ou=Groups,dc=vibhuvioio,dc=com
+description: Stash QA
+objectClass: groupOfUniqueNames
+uniqueMember: uid=jinna.baalu,ou=people,dc=vibhuvioio,dc=com
+cn: Stash QA
+structuralObjectClass: groupOfUniqueNames
+entryUUID: 0e577024-3009-1036-9db8-910f150f24bf
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20161026204647Z
+entryCSN: 20240507065433.000000Z#000001#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20240507065433Z
+
+dn: cn=vpnusers,ou=Groups,dc=vibhuvioio,dc=com
+description: for dev-vpn Barracuda users
+objectClass: groupOfUniqueNames
+uniqueMember: uid=jinna.baalu,ou=people,dc=vibhuvioio,dc=com
+cn: vpnusers
+structuralObjectClass: groupOfUniqueNames
+entryUUID: 20f866b4-7156-1036-9255-51b9cd056e77
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20170117231215Z
+entryCSN: 20251216053151.740411Z#000000#592#000000
+modifiersName: cn=manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20251216053151Z
+
+n: uid=jinna.baalu,ou=People,dc=vibhuvioio,dc=com
+uid: jinna.baalu
+cn: Jinna
+sn: Baalu
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: top
+objectClass: shadowAccount
+shadowLastChange: 14466
+shadowMax: 99999
+shadowWarning: 7
+loginShell: /bin/bash
+o: TRUE
+uidNumber: 12754
+gidNumber: 100
+homeDirectory: /home/jinna.baalu
+structuralObjectClass: inetOrgPerson
+entryUUID: 469ba734-bf14-103c-80ee-c5b343c4b62f
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20220902140708Z
+mail: jinna.baalu@mycompany.com
+userPassword:: QEBfQWxnbzI0NQ==
+entryCSN: 20220912141917.000000Z#000000#000#000000
+modifiersName: cn=Manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20220912141917Z
+
+dn: cn=rundeck_admin,ou=Groups,dc=vibhuvioio,dc=com
+objectClass: groupOfUniqueNames
+uniqueMember:
+uniqueMember: uid=jinna.baalu,ou=people,dc=vibhuvioio,dc=com
+cn: rundeck_admin
+structuralObjectClass: groupOfUniqueNames
+entryUUID: 83ab6b68-df6d-103c-80f2-c5b343c4b62f
+creatorsName: cn=Manager,dc=vibhuvioio,dc=com
+createTimestamp: 20221013180633Z
+entryCSN: 20250729090022.813547Z#000000#592#000000
+modifiersName: cn=manager,dc=vibhuvioio,dc=com
+modifyTimestamp: 20250729090022Z

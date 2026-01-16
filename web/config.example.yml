@@ -1,0 +1,80 @@
+# LDAP Cluster Configuration Example
+# This file documents all available configuration options
+
+clusters:
+  # Single Node Cluster Example
+  - name: "Single Node"              # REQUIRED: Display name for the cluster
+    host: "ldap.example.com"         # REQUIRED (if no nodes): Hostname or IP
+    port: 389                        # REQUIRED: LDAP port (389 for ldap://, 636 for ldaps://)
+    bind_dn: "cn=admin,dc=example,dc=com"  # REQUIRED: Bind DN for authentication
+    
+    # OPTIONAL fields:
+    base_dn: "dc=example,dc=com"     # OPTIONAL: Base DN for searches (empty = auto-discover from rootDSE)
+    bind_password: "secret123"       # OPTIONAL: Bind password (empty = prompt at UI, cached securely)
+    readonly: false                  # OPTIONAL: Read-only mode (default: false)
+    description: "Development LDAP"  # OPTIONAL: Description shown in UI
+
+  # Multi-Master Cluster Example
+  - name: "Multi-Master Cluster"     # REQUIRED: Display name
+    nodes:                           # REQUIRED (if no host): List of cluster nodes
+      - host: "ldap1.example.com"    # REQUIRED: Node hostname
+        port: 389                    # REQUIRED: Node port
+      - host: "ldap2.example.com"
+        port: 389
+      - host: "ldap3.example.com"
+        port: 389
+    bind_dn: "cn=admin,dc=example,dc=com"  # REQUIRED: Bind DN (same for all nodes)
+    
+    # OPTIONAL fields:
+    base_dn: "dc=example,dc=com"     # OPTIONAL: Base DN for all nodes
+    bind_password: ""                # OPTIONAL: Empty = prompt at UI
+    readonly: false                  # OPTIONAL: Read-only mode
+    description: "Production 3-node cluster"  # OPTIONAL: Description
+
+  # Minimal Configuration (only required fields)
+  - name: "Minimal"
+    host: "ldap.local"
+    port: 389
+    bind_dn: "cn=Manager,dc=local"
+
+  # Auto-Discovery Example
+  - name: "Auto-Discover"
+    host: "ldap.company.com"
+    port: 389
+    bind_dn: "cn=readonly,dc=company,dc=com"
+    base_dn: ""                      # Empty = auto-discover from server's namingContexts
+    bind_password: ""                # Empty = prompt at UI (cached after first entry)
+
+  # Read-Only Production Example
+  - name: "Production (Read-Only)"
+    nodes:
+      - host: "prod-ldap-1.company.com"
+        port: 636                    # LDAPS port
+      - host: "prod-ldap-2.company.com"
+        port: 636
+    bind_dn: "cn=readonly,dc=company,dc=com"
+    base_dn: "dc=company,dc=com"
+    readonly: true                   # Prevents write operations
+    description: "Production cluster - read-only access for monitoring"
+
+# FIELD REFERENCE:
+#
+# REQUIRED FIELDS:
+#   name        - Cluster display name (string)
+#   host        - Single node hostname (string) - use this OR nodes
+#   nodes       - Multi-node list (array) - use this OR host
+#   port        - LDAP port (integer) - required for host or each node
+#   bind_dn     - Bind DN for authentication (string)
+#
+# OPTIONAL FIELDS:
+#   base_dn     - Base DN for searches (string, default: "" = auto-discover)
+#   bind_password - Bind password (string, default: "" = prompt at UI)
+#   readonly    - Read-only mode (boolean, default: false)
+#   description - Cluster description (string, default: "")
+#
+# NOTES:
+#   - Either 'host' (single node) OR 'nodes' (multi-node) must be specified
+#   - Empty bind_password prompts at UI and caches securely in /app/.cache/
+#   - Empty base_dn triggers auto-discovery from LDAP rootDSE namingContexts
+#   - Port 389 = ldap://, Port 636 = ldaps:// (TLS)
+#   - readonly: true prevents all write operations (add/modify/delete)
