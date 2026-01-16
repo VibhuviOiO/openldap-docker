@@ -1,0 +1,54 @@
+# Multi-Master Replication Configuration for Node 1 (db-admin-ldap-1)
+# Server ID: 1
+# Peers: db-admin-ldap-2 (ID: 2), db-admin-ldap-3 (ID: 3)
+
+# Set server ID for Node 1
+dn: cn=config
+changetype: modify
+replace: olcServerID
+olcServerID: 1
+
+# Create module entry and load syncprov module
+dn: cn=module{0},cn=config
+changetype: add
+objectClass: olcModuleList
+cn: module{0}
+olcModuleLoad: syncprov.la
+
+# Add syncprov overlay to config database
+dn: olcOverlay=syncprov,olcDatabase={0}config,cn=config
+changetype: add
+objectClass: olcOverlayConfig
+objectClass: olcSyncProvConfig
+olcOverlay: syncprov
+
+# Add syncprov overlay to data database
+dn: olcOverlay=syncprov,olcDatabase={2}mdb,cn=config
+changetype: add
+objectClass: olcOverlayConfig
+objectClass: olcSyncProvConfig
+olcOverlay: syncprov
+
+# Config replication to peer nodes (Node 2 and Node 3)
+dn: olcDatabase={0}config,cn=config
+changetype: modify
+add: olcSyncRepl
+olcSyncRepl: rid=101 provider=ldap://db-admin-ldap-2:389 binddn="cn=config" bindmethod=simple credentials=5BigFights searchbase="cn=config" type=refreshAndPersist retry="5 5 300 5" timeout=1
+-
+add: olcSyncRepl
+olcSyncRepl: rid=102 provider=ldap://db-admin-ldap-3:389 binddn="cn=config" bindmethod=simple credentials=5BigFights searchbase="cn=config" type=refreshAndPersist retry="5 5 300 5" timeout=1
+-
+add: olcMirrorMode
+olcMirrorMode: TRUE
+
+# Data replication to peer nodes (Node 2 and Node 3)
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+add: olcSyncRepl
+olcSyncRepl: rid=201 provider=ldap://db-admin-ldap-2:389 binddn="cn=Manager,dc=vibhuvioio,dc=com" bindmethod=simple credentials=5BigFights searchbase="dc=vibhuvioio,dc=com" type=refreshAndPersist retry="5 5 300 5" timeout=1
+-
+add: olcSyncRepl
+olcSyncRepl: rid=202 provider=ldap://db-admin-ldap-3:389 binddn="cn=Manager,dc=vibhuvioio,dc=com" bindmethod=simple credentials=5BigFights searchbase="dc=vibhuvioio,dc=com" type=refreshAndPersist retry="5 5 300 5" timeout=1
+-
+add: olcMirrorMode
+olcMirrorMode: TRUE

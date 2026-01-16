@@ -1,0 +1,24 @@
+services:
+  ldap-manager:
+    build: .
+    container_name: ldap-manager
+    ports:
+      - "8000:8000"
+      - "5173:5173"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./backend/app:/app/app
+      - ./frontend/src:/frontend/src
+      - ./frontend/vite.config.ts:/frontend/vite.config.ts
+      - ./config.yml:/app/config.yml:ro
+    networks:
+      - ldap-network
+      - docker-openldap_ldap-network
+
+networks:
+  ldap-network:
+    driver: bridge
+  docker-openldap_ldap-network:
+    name: docker-openldap_ldap-network
+    external: true

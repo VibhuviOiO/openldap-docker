@@ -1,85 +1,222 @@
-# OpenLDAP Tutorial
+# OpenLDAP Docker with Web UI
 
-#### Introduction
+Production-ready OpenLDAP deployment with Docker and modern web management interface.
 
-Lightweight Directory Access Protocol (LDAP)
+## Features
 
-```mermaid
-flowchart TD
-    A[dc=com] --> B[dc=containertalks,dc=com]
-    B --> C[ou=finance,dc=containertalks,dc=com]
-    B --> D[ou=administration,dc=containertalks,dc=com]
-    C --> E[cn: ram<br>sn: Ram<br>givenName: Ram<br>mail: ram@containertalks.com<br>uid: ram]
-    C --> F[cn: shyam<br>sn: Shyam<br>givenName: Shyam<br>mail: shyam@containertalks.com<br>uid: shyam]
-    D --> G[cn: radha<br>sn: Radha<br>givenName: Radha<br>mail: radha@containertalks.com<br>uid: radha]
-    D --> H[cn: krishna<br>sn: Krishna<br>givenName: Krishna<br>mail: krishna@containertalks.com<br>uid: krishna]
-    D --> I[cn: balarama<br>sn: Balarama<br>givenName: Balarama<br>mail: balarama123@containertalks.com<br>uid: balarama]
+### OpenLDAP Server
+- **AlmaLinux 9** base image
+- **Single-node** and **Multi-master** (3-node) replication support
+- **Custom schema** support with hot-loading
+- **Activity logging** with automatic rotation
+- **Monitoring** via cn=Monitor backend
+- **Environment-driven** configuration (idempotent startup)
+- **TLS/SSL** ready
 
-    style C fill:#b6f8a5,stroke:#000,stroke-width:2px
-    style D fill:#b6f8a5,stroke:#333,stroke-width:2px
-    style I fill:#c2c6c2,stroke:#333,stroke-width:2px
-```
+### Web Management UI
+- **React + TypeScript** frontend with shadcn/ui components
+- **FastAPI** Python backend
+- **Multi-cluster** management from single interface
+- **Server-side pagination** (LDAP Simple Paged Results)
+- **Server-side search** with LDAP filters
+- **Password caching** for shared cluster access
+- **Auto-discovery** of base DN
+- **Real-time monitoring** and health checks
+- **Activity log** viewing with search examples
 
-### 1. Docker
+## Quick Start
 
-- 1.1 [Pre-requisites](https://github.com/jinnabaalu/openldap-tutorial/blob/main/prerequisites.md)
-- 1.2 [Run the openldap container]()
+### Single Node Deployment
 
-`openldap` default conf, schemas, certs are available in the container at the following
 ```bash
-$ cd /opt/bitnami/openldap/etc/ 
-$ ls
-certs  
-ldap.conf  
-schema  
-slapd.d
+cd oio/docker-openldap
+docker-compose -f docker-compose.single-node.yml up -d
 ```
 
-### 2. On the Host
+Access LDAP at `ldap://localhost:389`
 
-In this tutorial I am using the raspberry-pi, installed docker and docker-compose to run the ldap as container.
+### Multi-Master Deployment
 
-- 2.1. [Install OpenLDAP](https://github.com/jinnabaalu/openldap-tutorial/blob/main/2.1.Install-OpenLDAP-on-the-Host.md)
-- 2.2. [Understanding file structure](https://github.com/jinnabaalu/openldap-tutorial/blob/main/2.2.Understanding-filep-structure.md)
+```bash
+cd oio/docker-openldap
+docker-compose -f docker-compose.multi-master.yml up -d
+```
 
-### 3. Common Operations
-- 3.1 [LDAP Operations](https://github.com/jinnabaalu/openldap-tutorial/blob/main/3.2.LDAPOperations.md)
-- 3.2 [Backup and Restore](https://github.com/jinnabaalu/openldap-tutorial/blob/main/3.2.Backup-and-Restore.md)
+Three nodes: `ldap://localhost:389`, `ldap://localhost:390`, `ldap://localhost:391`
 
-###### Common LDAP Terms and Concepts
+### Web UI
 
-- `DIT (Directory Information Tree)`: The hierarchical structure of the LDAP directory.
-- `dn (Distinguished Name)`: The unique name that identifies an entry in the LDAP directory.
-- `dc (Domain Component)`: Used to represent parts of a domain name. Example: dc=example, dc=com.
-- `cn (Common Name)`: Typically used for a person's full name or an identifier for an entry. Example: cn=John Doe.
-- `o (Organization)`: Represents the name of an organization. Example: o=Example Organization.
-- `ou (Organizational Unit)`: Used to group entries logically within an organization. Example: ou=Engineering.
-- `ldif` :
-- `uid (User ID)`: Unique identifier for a user. Example: uid=jdoe.
-- `sn (Surname)`: Last name or family name. Example: sn=Doe.
-- `givenName`: First name or given name. Example: givenName=John.
-- `mail`: Email address. Example: mail=jdoe@example.com.
-- `telephoneNumber`: Telephone number. Example: telephoneNumber=123-456-7890.
-- `c (Country Name)`: Represents a country. Example: c=US.
-- `l (Locality Name)`: Represents a city or locality. Example: l=New York.
-- `st (State or Province Name)`: Represents a state or province. Example: st=New York.
-- `postalCode`: Represents a postal code. Example: postalCode=10001.
-- `objectClass`: Defines the schema or structure for an entry. Example: objectClass=inetOrgPerson.
-- `dcObject`: An object class used to define domain components.
-- `organizationalUnit`: An object class for defining organizational units.
-- `inetOrgPerson`: An object class that represents people in an LDAP directory.
-- `organizationalRole`: Represents roles within an organization.
-- `simpleSecurityObject`: An object class used for storing passwords.
-- `schema`: Defines the attributes and object classes that can be used in the directory.
-- `description`: A general description attribute. Example: description=Directory Manager.
-- `userPassword`: Stores the password for an entry. Example: userPassword=secret.
-- `entry`: A single record or node in the LDAP directory.
-- `LDIF (LDAP Data Interchange Format)` A standard plain-text format for representing LDAP directory entries and updates. LDIF files are used to import and export directory data.
-  ```bash
-  dn: cn=Jinn Balu,dc=jinnabalu,dc=com
-  objectClass: inetOrgPerson
-  cn: Jinna Balu
-  sn: Balu
-  uid: jbalu
-  mail: admin@jinnabalu.com
-  ```
+```bash
+cd oio/docker-openldap/web
+docker-compose up -d
+```
+
+Access UI at `http://localhost:5173`
+
+## Configuration
+
+### Environment Variables
+
+```bash
+LDAP_DOMAIN=example.com
+LDAP_ORGANIZATION=Example Organization
+LDAP_ADMIN_PASSWORD=admin123
+LDAP_CONFIG_PASSWORD=config123
+ENABLE_REPLICATION=false
+ENABLE_MONITORING=true
+SERVER_ID=1
+INCLUDE_SCHEMAS=cosine,inetorgperson,nis
+```
+
+### Custom Schemas
+
+Place `.ldif` schema files in `./custom-schema/` directory:
+
+```bash
+./custom-schema/
+  └── MyCustomSchema.ldif
+```
+
+Schemas are automatically loaded on container startup.
+
+### Web UI Configuration
+
+Edit `web/config.yml`:
+
+```yaml
+clusters:
+  - name: "Production LDAP"
+    host: "ldap.example.com"
+    port: 389
+    bind_dn: "cn=Manager,dc=example,dc=com"
+```
+
+## Use Cases
+
+Complete standalone deployments in `use-cases/` directory:
+
+### Vibhuvioio.com Example
+```bash
+cd use-cases/vibhuvioio-com-singlenode
+docker-compose up -d
+```
+
+Includes:
+- Custom MahabharataCharacter schema
+- 14 sample users (11 custom + 2 legacy + 1 standard)
+- 6 groups with various patterns
+- 5 organizational units
+- NIS map objects
+
+## Architecture
+
+### Directory Structure
+```
+oio/docker-openldap/
+├── Dockerfile              # AlmaLinux 9 + OpenLDAP
+├── startup.sh              # Idempotent configuration script
+├── docker-compose.*.yml    # Deployment configurations
+├── custom-schema/          # Custom LDAP schemas
+├── logs/                   # Activity logs (bind-mounted)
+├── web/                    # Management UI
+│   ├── frontend/          # React + TypeScript
+│   ├── backend/           # FastAPI Python
+│   └── config.yml         # Cluster configurations
+├── docs/                   # Documentation
+└── use-cases/             # Complete deployment examples
+```
+
+### Data Flow
+1. **Frontend** → Axios → **Backend API**
+2. **Backend** → python-ldap → **OpenLDAP Server**
+3. **LDAP** → Server-side filtering/pagination → **Results**
+
+## Features Deep Dive
+
+### Server-Side Pagination
+- Uses LDAP Simple Paged Results Control (RFC 2696)
+- Configurable page size (default: 10 entries)
+- Reduces memory usage for large directories
+- No client-side filtering overhead
+
+### Server-Side Search
+- LDAP filter: `(|(uid=*query*)(cn=*query*)(mail=*query*)(sn=*query*))`
+- Searches across username, name, email, surname
+- Combined with type filters (users/groups/OUs)
+- Efficient LDAP-native search
+
+### Activity Logging
+- Logs redirected to `/logs/slapd.log`
+- Date-based rotation with logrotate
+- Bind-mounted to host for direct access
+- Compressed archives: `slapd.log-YYYY-MM-DD.gz`
+
+### Monitoring
+- cn=Monitor backend (EXTERNAL auth only)
+- Health status checks via API
+- Connection and operation metrics
+- Response time tracking
+
+## API Endpoints
+
+### Entries
+- `GET /api/entries/search?cluster=<name>&page=1&page_size=10&search=<query>&filter_type=users`
+
+### Monitoring
+- `GET /api/monitoring/health?cluster=<name>`
+
+### Connection
+- `POST /api/connection/test` - Test LDAP connection
+- `POST /api/connection/connect` - Connect and cache password
+
+### Password Cache
+- `GET /api/password/check?cluster=<name>&bind_dn=<dn>`
+
+## Documentation
+
+- [Activity Logs](docs/ACTIVITY_LOGS.md) - Log management and rotation
+- [Activity Log Reference](docs/ACTIVITY_LOG_REFERENCE.md) - Log format and commands
+- [Monitoring](docs/MONITORING.md) - cn=Monitor configuration
+
+## Complex LDAP Patterns Supported
+
+- ✅ Multiple organizational units
+- ✅ Custom objectClass schemas
+- ✅ Legacy Unix accounts (account without inetOrgPerson)
+- ✅ Standard inetOrgPerson entries
+- ✅ groupOfNames, groupOfUniqueNames, posixGroup
+- ✅ Groups with empty member attributes
+- ✅ nisMap objects
+- ✅ Multi-value attributes
+- ✅ Custom schema inheritance
+
+## Requirements
+
+- Docker 20.10+
+- Docker Compose 2.0+
+- 2GB RAM minimum
+- 10GB disk space
+
+## Security Notes
+
+- Change default passwords in production
+- Use TLS/SSL for production deployments
+- Restrict network access to LDAP ports
+- Password cache uses SHA256 hashing
+- Bind DN passwords stored in memory only
+
+## License
+
+MIT License - See LICENSE file
+
+## Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+## Support
+
+For issues and questions, please open a GitHub issue.

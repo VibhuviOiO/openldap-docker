@@ -1,0 +1,26 @@
+services:
+  openldap:
+    build: .
+    container_name: openldap-single
+    hostname: openldap-single
+    env_file:
+      - .env
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/openldap/slapd.d
+      - ./logs:/logs
+      - ./custom-schema:/custom-schema:ro
+    restart: unless-stopped
+    networks:
+      - ldap-network
+
+volumes:
+  ldap-data:
+  ldap-config:
+
+networks:
+  ldap-network:
+    driver: bridge
