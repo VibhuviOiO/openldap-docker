@@ -1,10 +1,9 @@
-# OpenLDAP Docker with Web UI
+# OpenLDAP Docker
 
-Production-ready OpenLDAP deployment with Docker and modern web management interface.
+Production-ready OpenLDAP deployment with Docker supporting single-node and multi-master replication.
 
 ## Features
 
-### OpenLDAP Server
 - **AlmaLinux 9** base image
 - **Single-node** and **Multi-master** (3-node) replication support
 - **Custom schema** support with hot-loading
@@ -13,23 +12,13 @@ Production-ready OpenLDAP deployment with Docker and modern web management inter
 - **Environment-driven** configuration (idempotent startup)
 - **TLS/SSL** ready
 
-### Web Management UI
-- **React + TypeScript** frontend with shadcn/ui components
-- **FastAPI** Python backend
-- **Multi-cluster** management from single interface
-- **Server-side pagination** (LDAP Simple Paged Results)
-- **Server-side search** with LDAP filters
-- **Password caching** for shared cluster access
-- **Auto-discovery** of base DN
-- **Real-time monitoring** and health checks
-- **Activity log** viewing with search examples
-
 ## Quick Start
 
 ### Single Node Deployment
 
 ```bash
-cd oio/docker-openldap
+cp .env.example .env
+# Edit .env with your configuration
 docker-compose -f docker-compose.single-node.yml up -d
 ```
 
@@ -38,20 +27,10 @@ Access LDAP at `ldap://localhost:389`
 ### Multi-Master Deployment
 
 ```bash
-cd oio/docker-openldap
 docker-compose -f docker-compose.multi-master.yml up -d
 ```
 
 Three nodes: `ldap://localhost:389`, `ldap://localhost:390`, `ldap://localhost:391`
-
-### Web UI
-
-```bash
-cd oio/docker-openldap/web
-docker-compose up -d
-```
-
-Access UI at `http://localhost:5173`
 
 ## Configuration
 
@@ -60,8 +39,8 @@ Access UI at `http://localhost:5173`
 ```bash
 LDAP_DOMAIN=example.com
 LDAP_ORGANIZATION=Example Organization
-LDAP_ADMIN_PASSWORD=admin123
-LDAP_CONFIG_PASSWORD=config123
+LDAP_ADMIN_PASSWORD=changeme
+LDAP_CONFIG_PASSWORD=changeme
 ENABLE_REPLICATION=false
 ENABLE_MONITORING=true
 SERVER_ID=1
@@ -79,16 +58,39 @@ Place `.ldif` schema files in `./custom-schema/` directory:
 
 Schemas are automatically loaded on container startup.
 
-### Web UI Configuration
+## Management Options
 
-Edit `web/config.yml`:
+### Command Line Tools
+Use standard LDAP utilities:
+```bash
+ldapsearch -x -H ldap://localhost:389 -b "dc=example,dc=com" -D "cn=Manager,dc=example,dc=com" -w changeme
+ldapadd -x -D "cn=Manager,dc=example,dc=com" -w changeme -f data.ldif
+ldapmodify -x -D "cn=Manager,dc=example,dc=com" -w changeme -f changes.ldif
+```
 
-```yaml
-clusters:
-  - name: "Production LDAP"
-    host: "ldap.example.com"
-    port: 389
-    bind_dn: "cn=Manager,dc=example,dc=com"
+### GUI Clients
+- **Apache Directory Studio** - Eclipse-based LDAP browser
+- **phpLDAPadmin** - Web-based PHP interface
+- **JXplorer** - Java LDAP browser
+
+### Modern Web UI (Recommended)
+For a modern React-based management interface:
+
+**[LDAP Manager](https://github.com/your-org/ldap-manager)** - Standalone web UI with:
+- Multi-cluster management
+- Server-side pagination and search
+- Custom schema support
+- Real-time monitoring
+- Password caching
+
+```bash
+# Quick start with LDAP Manager
+git clone https://github.com/your-org/ldap-manager.git
+cd ldap-manager
+cp config.example.yml config.yml
+# Edit config.yml to point to your OpenLDAP server
+docker-compose up -d
+# Access at http://localhost:5173
 ```
 
 ## Use Cases
@@ -108,75 +110,22 @@ Includes:
 - 5 organizational units
 - NIS map objects
 
-## Architecture
+## Activity Logging
 
-### Directory Structure
-```
-oio/docker-openldap/
-├── Dockerfile              # AlmaLinux 9 + OpenLDAP
-├── startup.sh              # Idempotent configuration script
-├── docker-compose.*.yml    # Deployment configurations
-├── custom-schema/          # Custom LDAP schemas
-├── logs/                   # Activity logs (bind-mounted)
-├── web/                    # Management UI
-│   ├── frontend/          # React + TypeScript
-│   ├── backend/           # FastAPI Python
-│   └── config.yml         # Cluster configurations
-├── docs/                   # Documentation
-└── use-cases/             # Complete deployment examples
-```
-
-### Data Flow
-1. **Frontend** → Axios → **Backend API**
-2. **Backend** → python-ldap → **OpenLDAP Server**
-3. **LDAP** → Server-side filtering/pagination → **Results**
-
-## Features Deep Dive
-
-### Server-Side Pagination
-- Uses LDAP Simple Paged Results Control (RFC 2696)
-- Configurable page size (default: 10 entries)
-- Reduces memory usage for large directories
-- No client-side filtering overhead
-
-### Server-Side Search
-- LDAP filter: `(|(uid=*query*)(cn=*query*)(mail=*query*)(sn=*query*))`
-- Searches across username, name, email, surname
-- Combined with type filters (users/groups/OUs)
-- Efficient LDAP-native search
-
-### Activity Logging
 - Logs redirected to `/logs/slapd.log`
 - Date-based rotation with logrotate
 - Bind-mounted to host for direct access
 - Compressed archives: `slapd.log-YYYY-MM-DD.gz`
 
-### Monitoring
+See [Activity Logs Documentation](docs/ACTIVITY_LOGS.md)
+
+## Monitoring
+
 - cn=Monitor backend (EXTERNAL auth only)
-- Health status checks via API
+- Health status checks
 - Connection and operation metrics
-- Response time tracking
 
-## API Endpoints
-
-### Entries
-- `GET /api/entries/search?cluster=<name>&page=1&page_size=10&search=<query>&filter_type=users`
-
-### Monitoring
-- `GET /api/monitoring/health?cluster=<name>`
-
-### Connection
-- `POST /api/connection/test` - Test LDAP connection
-- `POST /api/connection/connect` - Connect and cache password
-
-### Password Cache
-- `GET /api/password/check?cluster=<name>&bind_dn=<dn>`
-
-## Documentation
-
-- [Activity Logs](docs/ACTIVITY_LOGS.md) - Log management and rotation
-- [Activity Log Reference](docs/ACTIVITY_LOG_REFERENCE.md) - Log format and commands
-- [Monitoring](docs/MONITORING.md) - cn=Monitor configuration
+See [Monitoring Documentation](docs/MONITORING.md)
 
 ## Complex LDAP Patterns Supported
 
@@ -202,8 +151,14 @@ oio/docker-openldap/
 - Change default passwords in production
 - Use TLS/SSL for production deployments
 - Restrict network access to LDAP ports
-- Password cache uses SHA256 hashing
-- Bind DN passwords stored in memory only
+- Regular password rotation
+
+## Documentation
+
+- [Setup Guide](SETUP.md)
+- [Activity Logs](docs/ACTIVITY_LOGS.md)
+- [Activity Log Reference](docs/ACTIVITY_LOG_REFERENCE.md)
+- [Monitoring](docs/MONITORING.md)
 
 ## License
 
