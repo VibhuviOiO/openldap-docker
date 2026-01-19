@@ -5,65 +5,61 @@ Complete LDAP setup with Mahabharata characters for vibhuvioio.com domain.
 ## Quick Start
 
 ```bash
-# Start LDAP
+# Start LDAP (data loads automatically)
 docker-compose up -d
 
-# Wait for initialization
-docker logs -f openldap-vibhuvioio
-# Wait for "OpenLDAP initialization completed"
-
-# Load custom schema
-docker exec openldap-vibhuvioio ldapadd -Y EXTERNAL -H ldapi:/// -f /custom-schema/MahabharataCharacter.ldif
-
-# Load sample data (from host)
-ldapadd -x -H ldap://localhost:389 -D "cn=Manager,dc=vibhuvioio,dc=com" -w admin123 -f data/mahabharata_data.ldif
-
-# Or from container
-docker cp data/mahabharata_data.ldif openldap-vibhuvioio:/tmp/
-docker exec openldap-vibhuvioio ldapadd -x -D "cn=Manager,dc=vibhuvioio,dc=com" -w admin123 -f /tmp/mahabharata_data.ldif
+# Wait 45 seconds for initialization
+sleep 45
 ```
 
 ## Verify
 
 ```bash
-# Count entries
-ldapsearch -x -H ldap://localhost:389 -b "dc=vibhuvioio,dc=com" -D "cn=Manager,dc=vibhuvioio,dc=com" -w admin123 "(objectClass=*)" dn | grep -c "^dn:"
+# Check user count (should be 20)
+docker exec openldap-vibhuvioio ldapsearch -x -H ldap://localhost:389 \
+  -b "ou=People,dc=vibhuvioio,dc=com" \
+  -D "cn=Manager,dc=vibhuvioio,dc=com" -w "changeme" \
+  "(objectClass=inetOrgPerson)" dn 2>/dev/null | grep "^dn:" | wc -l
 
-# List users
-ldapsearch -x -H ldap://localhost:389 -b "ou=People,dc=vibhuvioio,dc=com" -D "cn=Manager,dc=vibhuvioio,dc=com" -w admin123 "(objectClass=MahabharataUser)" uid cn kingdom role allegiance
-
-# List groups
-ldapsearch -x -H ldap://localhost:389 -b "ou=Group,dc=vibhuvioio,dc=com" -D "cn=Manager,dc=vibhuvioio,dc=com" -w admin123 "(objectClass=groupOfUniqueNames)" cn
+# List all users
+docker exec openldap-vibhuvioio ldapsearch -x -H ldap://localhost:389 \
+  -b "ou=People,dc=vibhuvioio,dc=com" \
+  -D "cn=Manager,dc=vibhuvioio,dc=com" -w "changeme" \
+  "(objectClass=inetOrgPerson)" uid cn
 ```
 
 ## Data
 
-### Users (11)
-- **Pandavas**: arjuna, bhima, yudhishthira, nakula, sahadeva
-- **Kauravas**: duryodhana, dushasana, karna
-- **Advisors**: krishna, bhishma, drona
+### Users (20)
+- **Pandavas (5)**: arjuna, bhima, yudhishthira, nakula, sahadeva
+- **Kauravas (3)**: duryodhana, dushasana, karna
+- **Advisors/Elders (3)**: krishna, bhishma, drona
+- **Warriors (3)**: abhimanyu, ashwatthama, kripacharya
+- **Royalty (3)**: draupadi, kunti, gandhari
+- **Leaders (3)**: vidura, shakuni, dhritarashtra
 
 ### Groups (5)
-- Pandavas, Kauravas, Warriors, Administrators, Advisors
+- **Pandavas** (10 members)
+- **Kauravas** (10 members)
+- **Warriors** (13 members)
+- **Administrators** (9 members)
+- **Advisors** (3 members)
 
-### Custom Attributes
-- kingdom, weapon, role, allegiance, isWarrior, isAdmin
+### Custom Schema
+- **MahabharataUser** objectClass with attributes:
+  - kingdom, weapon, role, allegiance, isWarrior, isAdmin
 
-## Web UI
+## Configuration
 
-Update `../../web/config.yml`:
-```yaml
-clusters:
-  - name: "Vibhuvioio LDAP"
-    host: "localhost"
-    port: 389
-    bind_dn: "cn=Manager,dc=vibhuvioio,dc=com"
-```
-
-Password: `admin123`
+- **Domain**: vibhuvioio.com
+- **Port**: 389 (LDAP), 636 (LDAPS)
+- **Admin DN**: cn=Manager,dc=vibhuvioio,dc=com
+- **Admin Password**: changeme
+- **Base DN**: dc=vibhuvioio,dc=com
 
 ## Cleanup
 
 ```bash
+# Stop and remove all data
 docker-compose down -v
 ```

@@ -1,0 +1,18 @@
+services:
+  ldap-manager:
+    build: ../../ldap-manager
+    container_name: ldap-manager
+    ports:
+      - "8000:8000"
+      - "5173:5173"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - VITE_FOOTER_TEXT=LDAP Manager - Multi-Cluster Management
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    networks:
+      - ldap-shared-network
+
+networks:
+  ldap-shared-network:
+    external: true

@@ -267,5 +267,23 @@ echo "📝 Activity logs: /logs/slapd.log"
 kill $SLAPD_PID 2>/dev/null
 wait $SLAPD_PID 2>/dev/null || true
 
-# Start slapd in foreground
-exec /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d stats >> /logs/slapd.log 2>&1
+# Start slapd in foreground with init scripts in background
+/usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d stats >> /logs/slapd.log 2>&1 &
+SLAPD_FINAL_PID=$!
+
+# Wait for slapd to be ready
+sleep 3
+
+# Run init scripts if they exist
+if [ -d "/docker-entrypoint-initdb.d" ]; then
+    echo "🔧 Running initialization scripts..."
+    for script in /docker-entrypoint-initdb.d/*.sh; do
+        if [ -f "$script" ]; then
+            echo "  Executing $(basename $script)..."
+            bash "$script" || echo "  ⚠️  Script failed but continuing..."
+        fi
+    done
+fi
+
+# Keep slapd running
+wait $SLAPD_FINAL_PID

@@ -234,6 +234,195 @@ allegiance: Kauravas
 isWarrior: TRUE
 isAdmin: FALSE
 
+dn: uid=draupadi,ou=People,dc=vibhuvioio,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: MahabharataUser
+uid: draupadi
+cn: Draupadi
+sn: Panchala
+mail: draupadi@vibhuvioio.com
+userPassword: {SSHA}password123
+uidNumber: 2012
+gidNumber: 1000
+homeDirectory: /home/draupadi
+loginShell: /bin/bash
+kingdom: Panchala
+weapon: None
+role: Queen
+allegiance: Pandavas
+isWarrior: FALSE
+isAdmin: FALSE
+
+dn: uid=abhimanyu,ou=People,dc=vibhuvioio,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: MahabharataUser
+uid: abhimanyu
+cn: Abhimanyu
+sn: Pandava
+mail: abhimanyu@vibhuvioio.com
+userPassword: {SSHA}password123
+uidNumber: 2013
+gidNumber: 1000
+homeDirectory: /home/abhimanyu
+loginShell: /bin/bash
+kingdom: Hastinapura
+weapon: Bow and Sword
+role: Warrior Prince
+allegiance: Pandavas
+isWarrior: TRUE
+isAdmin: FALSE
+
+dn: uid=ashwatthama,ou=People,dc=vibhuvioio,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: MahabharataUser
+uid: ashwatthama
+cn: Ashwatthama
+sn: Bharadwaja
+mail: ashwatthama@vibhuvioio.com
+userPassword: {SSHA}password123
+uidNumber: 2014
+gidNumber: 1001
+homeDirectory: /home/ashwatthama
+loginShell: /bin/bash
+kingdom: Hastinapura
+weapon: Brahmastra
+role: Warrior
+allegiance: Kauravas
+isWarrior: TRUE
+isAdmin: FALSE
+
+dn: uid=shakuni,ou=People,dc=vibhuvioio,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: MahabharataUser
+uid: shakuni
+cn: Shakuni
+sn: Gandhara
+mail: shakuni@vibhuvioio.com
+userPassword: {SSHA}password123
+uidNumber: 2015
+gidNumber: 1001
+homeDirectory: /home/shakuni
+loginShell: /bin/bash
+kingdom: Gandhara
+weapon: Dice
+role: Advisor
+allegiance: Kauravas
+isWarrior: FALSE
+isAdmin: TRUE
+
+dn: uid=vidura,ou=People,dc=vibhuvioio,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: MahabharataUser
+uid: vidura
+cn: Vidura
+sn: Kuru
+mail: vidura@vibhuvioio.com
+userPassword: {SSHA}password123
+uidNumber: 2016
+gidNumber: 1002
+homeDirectory: /home/vidura
+loginShell: /bin/bash
+kingdom: Hastinapura
+weapon: None
+role: Prime Minister
+allegiance: Pandavas
+isWarrior: FALSE
+isAdmin: TRUE
+
+dn: uid=kunti,ou=People,dc=vibhuvioio,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: MahabharataUser
+uid: kunti
+cn: Kunti
+sn: Kuru
+mail: kunti@vibhuvioio.com
+userPassword: {SSHA}password123
+uidNumber: 2017
+gidNumber: 1000
+homeDirectory: /home/kunti
+loginShell: /bin/bash
+kingdom: Hastinapura
+weapon: None
+role: Queen Mother
+allegiance: Pandavas
+isWarrior: FALSE
+isAdmin: FALSE
+
+dn: uid=gandhari,ou=People,dc=vibhuvioio,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: MahabharataUser
+uid: gandhari
+cn: Gandhari
+sn: Gandhara
+mail: gandhari@vibhuvioio.com
+userPassword: {SSHA}password123
+uidNumber: 2018
+gidNumber: 1001
+homeDirectory: /home/gandhari
+loginShell: /bin/bash
+kingdom: Gandhara
+weapon: None
+role: Queen Mother
+allegiance: Kauravas
+isWarrior: FALSE
+isAdmin: FALSE
+
+dn: uid=dhritarashtra,ou=People,dc=vibhuvioio,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: MahabharataUser
+uid: dhritarashtra
+cn: Dhritarashtra
+sn: Kuru
+mail: dhritarashtra@vibhuvioio.com
+userPassword: {SSHA}password123
+uidNumber: 2019
+gidNumber: 1001
+homeDirectory: /home/dhritarashtra
+loginShell: /bin/bash
+kingdom: Hastinapura
+weapon: None
+role: King
+allegiance: Kauravas
+isWarrior: FALSE
+isAdmin: TRUE
+
+dn: uid=kripacharya,ou=People,dc=vibhuvioio,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: MahabharataUser
+uid: kripacharya
+cn: Kripacharya
+sn: Gautama
+mail: kripacharya@vibhuvioio.com
+userPassword: {SSHA}password123
+uidNumber: 2020
+gidNumber: 1002
+homeDirectory: /home/kripacharya
+loginShell: /bin/bash
+kingdom: Hastinapura
+weapon: Bow
+role: Teacher
+allegiance: Kauravas
+isWarrior: TRUE
+isAdmin: FALSE
+
 # Groups
 dn: cn=Pandavas,ou=Group,dc=vibhuvioio,dc=com
 objectClass: groupOfUniqueNames
@@ -245,6 +434,10 @@ uniqueMember: uid=yudhishthira,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=nakula,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=sahadeva,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=krishna,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=draupadi,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=abhimanyu,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=vidura,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=kunti,ou=People,dc=vibhuvioio,dc=com
 
 dn: cn=Kauravas,ou=Group,dc=vibhuvioio,dc=com
 objectClass: groupOfUniqueNames
@@ -255,6 +448,11 @@ uniqueMember: uid=dushasana,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=karna,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=bhishma,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=drona,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=ashwatthama,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=shakuni,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=gandhari,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=dhritarashtra,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=kripacharya,ou=People,dc=vibhuvioio,dc=com
 
 dn: cn=Warriors,ou=Group,dc=vibhuvioio,dc=com
 objectClass: groupOfUniqueNames
@@ -270,6 +468,9 @@ uniqueMember: uid=dushasana,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=karna,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=bhishma,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=drona,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=abhimanyu,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=ashwatthama,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=kripacharya,ou=People,dc=vibhuvioio,dc=com
 
 dn: cn=Administrators,ou=Group,dc=vibhuvioio,dc=com
 objectClass: groupOfUniqueNames
@@ -281,6 +482,9 @@ uniqueMember: uid=duryodhana,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=karna,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=krishna,ou=People,dc=vibhuvioio,dc=com
 uniqueMember: uid=bhishma,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=shakuni,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=vidura,ou=People,dc=vibhuvioio,dc=com
+uniqueMember: uid=dhritarashtra,ou=People,dc=vibhuvioio,dc=com
 
 dn: cn=Advisors,ou=Group,dc=vibhuvioio,dc=com
 objectClass: groupOfUniqueNames

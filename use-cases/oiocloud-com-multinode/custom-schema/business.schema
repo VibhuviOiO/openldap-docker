@@ -1,0 +1,38 @@
+attributetype ( 1.3.6.1.4.1.99998.1.1.1
+  NAME 'businessUnit'
+  DESC 'Business unit or division'
+  EQUALITY caseIgnoreMatch
+  SUBSTR caseIgnoreSubstringsMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{64} )
+
+attributetype ( 1.3.6.1.4.1.99998.1.1.2
+  NAME 'costCenter'
+  DESC 'Cost center code'
+  EQUALITY caseIgnoreMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{32} )
+
+attributetype ( 1.3.6.1.4.1.99998.1.1.3
+  NAME 'employeeLevel'
+  DESC 'Employee level (Junior, Mid, Senior, Lead, Manager, Director, VP, C-Level)'
+  EQUALITY caseIgnoreMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{32} )
+
+attributetype ( 1.3.6.1.4.1.99998.1.1.4
+  NAME 'location'
+  DESC 'Office location'
+  EQUALITY caseIgnoreMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{128} )
+
+attributetype ( 1.3.6.1.4.1.99998.1.1.5
+  NAME 'workSchedule'
+  DESC 'Work schedule (Full-time, Part-time, Contract, Remote)'
+  EQUALITY caseIgnoreMatch
+  SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{32} )
+
+objectclass ( 1.3.6.1.4.1.99998.1.2.1
+  NAME 'oioCloudEmployee'
+  DESC 'OIO Cloud Business Employee'
+  SUP inetOrgPerson
+  STRUCTURAL
+  MUST ( cn $ sn $ mail )
+  MAY ( businessUnit $ costCenter $ employeeLevel $ location $ workSchedule $ title $ telephoneNumber $ mobile $ manager ) )

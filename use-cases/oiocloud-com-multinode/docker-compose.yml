@@ -1,0 +1,96 @@
+services:
+  openldap-node1:
+    image: openldap-custom:latest
+    container_name: openldap-oiocloud-node1
+    hostname: openldap-oiocloud-node1
+    environment:
+      - LDAP_DOMAIN=oiocloud.com
+      - LDAP_ORGANIZATION=OIO Cloud Services
+      - LDAP_ADMIN_PASSWORD=changeme
+      - LDAP_CONFIG_PASSWORD=changeme
+      - INCLUDE_SCHEMAS=cosine,inetorgperson,nis
+      - ENABLE_REPLICATION=true
+      - SERVER_ID=1
+      - ENABLE_MONITORING=true
+      - REPLICATION_HOSTS=ldap://openldap-oiocloud-node1:389 ldap://openldap-oiocloud-node2:389 ldap://openldap-oiocloud-node3:389
+    ports:
+      - "391:389"
+      - "638:636"
+    volumes:
+      - ldap-data-node1:/var/lib/ldap
+      - ldap-config-node1:/etc/openldap/slapd.d
+      - ./logs:/logs
+      - ./custom-schema:/custom-schema:ro
+      - ./business_data.ldif:/data/business_data.ldif:ro
+      - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh:ro
+    restart: unless-stopped
+    networks:
+      - ldap-shared-network
+
+  openldap-node2:
+    image: openldap-custom:latest
+    container_name: openldap-oiocloud-node2
+    hostname: openldap-oiocloud-node2
+    environment:
+      - LDAP_DOMAIN=oiocloud.com
+      - LDAP_ORGANIZATION=OIO Cloud Services
+      - LDAP_ADMIN_PASSWORD=changeme
+      - LDAP_CONFIG_PASSWORD=changeme
+      - INCLUDE_SCHEMAS=cosine,inetorgperson,nis
+      - ENABLE_REPLICATION=true
+      - SERVER_ID=2
+      - ENABLE_MONITORING=true
+      - REPLICATION_HOSTS=ldap://openldap-oiocloud-node1:389 ldap://openldap-oiocloud-node2:389 ldap://openldap-oiocloud-node3:389
+    ports:
+      - "392:389"
+      - "639:636"
+    volumes:
+      - ldap-data-node2:/var/lib/ldap
+      - ldap-config-node2:/etc/openldap/slapd.d
+      - ./logs:/logs
+      - ./custom-schema:/custom-schema:ro
+    restart: unless-stopped
+    networks:
+      - ldap-shared-network
+    depends_on:
+      - openldap-node1
+
+  openldap-node3:
+    image: openldap-custom:latest
+    container_name: openldap-oiocloud-node3
+    hostname: openldap-oiocloud-node3
+    environment:
+      - LDAP_DOMAIN=oiocloud.com
+      - LDAP_ORGANIZATION=OIO Cloud Services
+      - LDAP_ADMIN_PASSWORD=changeme
+      - LDAP_CONFIG_PASSWORD=changeme
+      - INCLUDE_SCHEMAS=cosine,inetorgperson,nis
+      - ENABLE_REPLICATION=true
+      - SERVER_ID=3
+      - ENABLE_MONITORING=true
+      - REPLICATION_HOSTS=ldap://openldap-oiocloud-node1:389 ldap://openldap-oiocloud-node2:389 ldap://openldap-oiocloud-node3:389
+    ports:
+      - "393:389"
+      - "640:636"
+    volumes:
+      - ldap-data-node3:/var/lib/ldap
+      - ldap-config-node3:/etc/openldap/slapd.d
+      - ./logs:/logs
+      - ./custom-schema:/custom-schema:ro
+    restart: unless-stopped
+    networks:
+      - ldap-shared-network
+    depends_on:
+      - openldap-node1
+
+volumes:
+  ldap-data-node1:
+  ldap-config-node1:
+  ldap-data-node2:
+  ldap-config-node2:
+  ldap-data-node3:
+  ldap-config-node3:
+
+networks:
+  ldap-shared-network:
+    external: true
