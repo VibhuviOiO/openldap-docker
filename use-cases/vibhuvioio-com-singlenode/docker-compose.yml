@@ -4,7 +4,7 @@ services:
     container_name: openldap-vibhuvioio
     hostname: openldap-vibhuvioio
     env_file:
-      - .env
+      - .env.vibhuvioio
     ports:
       - "389:389"
       - "636:636"

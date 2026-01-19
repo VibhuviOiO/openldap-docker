@@ -348,7 +348,7 @@ clusters:
       default_visible: true
 
 - name: "oiocloud.com"
-  description: "OIO Cloud Services - Multi-Master Cluster"
+  description: "OIO Cloud Services - Multi-Master Cluster - 30 Employees"
   nodes:
   - host: "openldap-oiocloud-node1"
     port: 389
@@ -361,3 +361,133 @@ clusters:
     name: "node3"
   bind_dn: "cn=Manager,dc=oiocloud,dc=com"
   base_dn: "dc=oiocloud,dc=com"
+  password_policy:
+    min_length: 8
+    require_confirmation: true
+  user_creation_form:
+    base_ou: "ou=People,dc=oiocloud,dc=com"
+    object_classes:
+    - oioCloudEmployee
+    - posixAccount
+    fields:
+    - name: employeeID
+      label: Employee ID
+      type: text
+      required: true
+      placeholder: "e.g., CI001"
+    - name: uid
+      label: Username
+      type: text
+      required: true
+      placeholder: "e.g., jdoe"
+    - name: cn
+      label: Full Name
+      type: text
+      required: true
+    - name: sn
+      label: Last Name
+      type: text
+      required: true
+    - name: mail
+      label: Email
+      type: email
+      required: true
+      auto_generate: "${uid}@oiocloud.com"
+    - name: userPassword
+      label: Password
+      type: password
+      required: true
+    - name: department
+      label: Department
+      type: select
+      required: true
+      options:
+      - Cloud Infrastructure
+      - Cloud Security
+      - Cloud Operations
+    - name: jobTitle
+      label: Job Title
+      type: text
+      required: true
+    - name: location
+      label: Office Location
+      type: select
+      required: true
+      options:
+      - San Francisco
+      - Bangalore
+      - Tokyo
+      - London
+      - Singapore
+      - Berlin
+      - Sydney
+      - Dubai
+    - name: telephoneNumber
+      label: Phone Number
+      type: text
+      required: false
+    - name: uidNumber
+      label: UID Number
+      type: number
+      required: true
+      auto_generate: "next_uid"
+      readonly: true
+    - name: gidNumber
+      label: Primary Group ID
+      type: select
+      required: true
+      default: 200
+      options:
+      - value: 200
+        label: "Cloud Infrastructure (200)"
+      - value: 201
+        label: "Cloud Security (201)"
+      - value: 202
+        label: "Cloud Operations (202)"
+    - name: homeDirectory
+      label: Home Directory
+      type: text
+      required: true
+      auto_generate: "/home/${uid}"
+  table_columns:
+    users:
+    - name: employeeID
+      label: Employee ID
+      default_visible: true
+    - name: uid
+      label: Username
+      default_visible: true
+    - name: cn
+      label: Full Name
+      default_visible: true
+    - name: mail
+      label: Email
+      default_visible: true
+    - name: department
+      label: Department
+      default_visible: true
+    - name: jobTitle
+      label: Job Title
+      default_visible: true
+    - name: location
+      label: Location
+      default_visible: true
+    - name: telephoneNumber
+      label: Phone
+      default_visible: false
+    - name: uidNumber
+      label: UID
+      default_visible: false
+    - name: gidNumber
+      label: GID
+      default_visible: false
+    groups:
+    - name: cn
+      label: Group Name
+      default_visible: true
+    - name: description
+      label: Description
+      default_visible: true
+    - name: members
+      label: Members
+      default_visible: true
