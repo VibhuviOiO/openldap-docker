@@ -1,6 +1,24 @@
 # OpenLDAP Use Cases
 
-This directory contains real-world use case implementations demonstrating different OpenLDAP deployment scenarios managed through a single LDAP Manager UI.
+This directory contains real-world OpenLDAP deployment scenarios managed through a unified LDAP Manager UI.
+
+## LDAP Manager
+
+**LDAP Manager** is a web-based UI that provides centralized management for multiple LDAP clusters from a single interface.
+
+### Features
+- **Multi-Cluster Management**: Switch between different LDAP directories seamlessly
+- **User Management**: Create, edit, delete users with custom forms per cluster
+- **Group Management**: Manage groups and memberships
+- **Search & Filter**: Advanced search across users, groups, and OUs
+- **Custom Schemas**: Support for domain-specific attributes and object classes
+- **Multi-Master Support**: Manage replicated clusters with automatic failover
+- **Responsive UI**: Modern React-based interface
+
+### Access
+- **URL**: http://localhost:5173
+- **Configuration**: `ldap-manager/config.yml`
+- **Start**: `cd ldap-manager && docker-compose up -d`
 
 ## Available Use Cases
 
@@ -33,17 +51,17 @@ docker-compose up -d
 - Sample data: 5 employees across 3 departments
 - [Documentation](./vibhuvi-com-singlenode/README.md)
 
-### 3. oiocloud.com - Business Organization (3-Node Multi-Master)
-**Ports**: 391-393, 638-640  
-**Schema**: Business employee schema  
-**Use Case**: Enterprise-scale directory with high availability  
-**Status**: ✅ Ready to Deploy
+### 3. oiocloud.com - Cloud Services (3-Node Multi-Master)
+**Ports**: 392-394, 639-641  
+**Schema**: Cloud employee schema  
+**Use Case**: Enterprise cloud services directory with high availability  
+**Status**: ✅ Production Ready
 
 - Custom objectClass: oioCloudEmployee
-- Attributes: businessUnit, costCenter, employeeLevel, location, workSchedule
+- Attributes: employeeID, department, jobTitle, location, telephoneNumber
 - Multi-master replication across 3 nodes
-- Departments: Executive, Technology, Product, Sales, Marketing, HR
-- Sample data: 10 employees with organizational hierarchy
+- Departments: Cloud Infrastructure, Cloud Security, Cloud Operations
+- Sample data: 30 employees across global locations
 - [Documentation](./oiocloud-com-multinode/README.md)
 
 ## Architecture Overview
@@ -59,7 +77,7 @@ docker-compose up -d
     │ vibhuvioio │  │  vibhuvi   │  │    oiocloud.com    │
     │    .com    │  │    .com    │  │   (3-node cluster) │
     │            │  │            │  │                    │
-    │  Port 389  │  │  Port 390  │  │ Ports 391-393      │
+    │  Port 389  │  │  Port 390  │  │ Ports 392-394      │
     │ Single Node│  │ Single Node│  │ Multi-Master       │
     └────────────┘  └────────────┘  └────────────────────┘
 ```
@@ -79,11 +97,9 @@ sleep 10
 docker exec openldap-vibhuvi ldapadd -x -D "cn=admin,dc=vibhuvi,dc=com" -w changeme -f /custom-schema/employee_data.ldif
 cd ..
 
-# Start oiocloud.com (3 nodes)
+# Start oiocloud.com (3 nodes - data loads automatically)
 cd oiocloud-com-multinode
 docker-compose up -d
-sleep 30
-docker exec openldap-oiocloud-node1 ldapadd -x -D "cn=admin,dc=oiocloud,dc=com" -w changeme -f /custom-schema/business_data.ldif
 cd ..
 ```
 
@@ -107,7 +123,7 @@ clusters:
     description: Vibhuvi Corporation Employee Directory
     host: localhost
     port: 390
-    bind_dn: cn=admin,dc=vibhuvi,dc=com
+    bind_dn: cn=Manager,dc=vibhuvi,dc=com
     base_dn: dc=vibhuvi,dc=com
     readonly: false
 
@@ -116,15 +132,15 @@ clusters:
     description: OIO Cloud Services - Multi-Master Cluster
     nodes:
       - host: localhost
-        port: 391
+        port: 392
         name: node1
       - host: localhost
-        port: 392
+        port: 393
         name: node2
       - host: localhost
-        port: 393
+        port: 394
         name: node3
-    bind_dn: cn=admin,dc=oiocloud,dc=com
+    bind_dn: cn=Manager,dc=oiocloud,dc=com
     base_dn: dc=oiocloud,dc=com
     readonly: false
 ```
@@ -135,9 +151,9 @@ clusters:
 |---------|-----------|------------|------|
 | vibhuvioio.com | 389 | 636 | Single Node |
 | vibhuvi.com | 390 | 637 | Single Node |
-| oiocloud.com (node1) | 391 | 638 | Multi-Master |
-| oiocloud.com (node2) | 392 | 639 | Multi-Master |
-| oiocloud.com (node3) | 393 | 640 | Multi-Master |
+| oiocloud.com (node1) | 392 | 639 | Multi-Master |
+| oiocloud.com (node2) | 393 | 640 | Multi-Master |
+| oiocloud.com (node3) | 394 | 641 | Multi-Master |
 
 ## Use Case Comparison
 
@@ -146,8 +162,8 @@ clusters:
 | **Nodes** | 1 | 1 | 3 |
 | **Replication** | No | No | Multi-Master |
 | **Schema Type** | Custom (Mythological) | Corporate | Business |
-| **Sample Users** | 24 warriors | 5 employees | 10 employees |
-| **Departments** | Kingdoms | 3 | 6 |
+| **Sample Users** | 20 warriors | 28 employees | 30 employees |
+| **Departments** | Kingdoms | 8 | 3 |
 | **Hierarchy** | Flat | Manager-Employee | Multi-level |
 | **Use Case** | Demo/Testing | Small Company | Enterprise |
 
@@ -158,12 +174,12 @@ clusters:
 ldapsearch -x -H ldap://localhost:389 -b "dc=vibhuvioio,dc=com" -D "cn=admin,dc=vibhuvioio,dc=com" -w changeme "(objectClass=warrior)" cn
 
 # Test vibhuvi.com
-ldapsearch -x -H ldap://localhost:390 -b "dc=vibhuvi,dc=com" -D "cn=admin,dc=vibhuvi,dc=com" -w changeme "(objectClass=vibhuviEmployee)" cn department
+ldapsearch -x -H ldap://localhost:390 -b "dc=vibhuvi,dc=com" -D "cn=Manager,dc=vibhuvi,dc=com" -w changeme "(objectClass=vibhuviEmployee)" cn department
 
 # Test oiocloud.com (all nodes)
-ldapsearch -x -H ldap://localhost:391 -b "dc=oiocloud,dc=com" -D "cn=admin,dc=oiocloud,dc=com" -w changeme "(objectClass=oioCloudEmployee)" cn businessUnit
-ldapsearch -x -H ldap://localhost:392 -b "dc=oiocloud,dc=com" -D "cn=admin,dc=oiocloud,dc=com" -w changeme "(objectClass=oioCloudEmployee)" cn businessUnit
-ldapsearch -x -H ldap://localhost:393 -b "dc=oiocloud,dc=com" -D "cn=admin,dc=oiocloud,dc=com" -w changeme "(objectClass=oioCloudEmployee)" cn businessUnit
+ldapsearch -x -H ldap://localhost:392 -b "dc=oiocloud,dc=com" -D "cn=Manager,dc=oiocloud,dc=com" -w changeme "(objectClass=oioCloudEmployee)" cn department
+ldapsearch -x -H ldap://localhost:393 -b "dc=oiocloud,dc=com" -D "cn=Manager,dc=oiocloud,dc=com" -w changeme "(objectClass=oioCloudEmployee)" cn department
+ldapsearch -x -H ldap://localhost:394 -b "dc=oiocloud,dc=com" -D "cn=Manager,dc=oiocloud,dc=com" -w changeme "(objectClass=oioCloudEmployee)" cn department
 ```
 
 ## Cleanup All Clusters
