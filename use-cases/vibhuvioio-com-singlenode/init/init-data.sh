@@ -18,7 +18,7 @@ for i in {1..10}; do
 done
 
 echo "🔍 Checking if data already exists..."
-COUNT=$(ldapsearch -x -H "$LDAP_URI" -b "ou=users,$BASE_DN" -D "$ADMIN_DN" -w "$ADMIN_PW" "(objectClass=MahabharataCharacter)" dn 2>/dev/null | grep "^dn:" | wc -l || echo "0")
+COUNT=$(ldapsearch -x -H "$LDAP_URI" -b "ou=People,$BASE_DN" -D "$ADMIN_DN" -w "$ADMIN_PW" "(objectClass=inetOrgPerson)" dn 2>/dev/null | grep "^dn:" | wc -l || echo "0")
 COUNT=$(echo $COUNT | tr -d '\n\r ')
 
 if [ "$COUNT" -gt "0" ]; then

@@ -193,7 +193,7 @@ olcServerID: $SERVER_ID
 EOF
 
     # Load syncprov module
-    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcModuleLoad=*syncprov*)" 2>/dev/null | grep -q "dn:"; then
+    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=module{0},cn=config" -s base 2>/dev/null | grep -q "dn: cn=module{0},cn=config"; then
         echo "🔹 Loading syncprov module..."
         cat <<EOF | ldapadd -Y EXTERNAL -H ldapi:///
 dn: cn=module{0},cn=config
@@ -204,7 +204,7 @@ EOF
     fi
 
     # Add syncprov overlay
-    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcOverlay={*}syncprov)" 2>/dev/null | grep -q "dn:"; then
+    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "olcDatabase={2}mdb,cn=config" 2>/dev/null | grep -q "olcOverlay={0}syncprov"; then
         echo "🔹 Adding syncprov overlay..."
         cat <<EOF | ldapadd -Y EXTERNAL -H ldapi:///
 dn: olcOverlay=syncprov,olcDatabase={2}mdb,cn=config
@@ -216,44 +216,49 @@ EOF
 
     # Configure replication to peers
     if [ -n "$REPLICATION_PEERS" ]; then
-        echo "🔹 Configuring replication peers..."
-        
-        # Parse RIDs if provided, otherwise auto-generate
-        if [ -n "$REPLICATION_RIDS" ]; then
-            IFS=',' read -ra RIDS <<< "$REPLICATION_RIDS"
+        # Check if replication is already configured
+        if ldapsearch -Y EXTERNAL -H ldapi:/// -b "olcDatabase={2}mdb,cn=config" 2>/dev/null | grep -q "olcSyncrepl:"; then
+            echo "🔹 Replication peers already configured, skipping..."
         else
-            RIDS=()
-        fi
-        
-        RID_INDEX=0
-        RID=100
-        for peer in ${REPLICATION_PEERS//,/ }; do
-            # Use provided RID or auto-generate
-            if [ ${#RIDS[@]} -gt 0 ] && [ $RID_INDEX -lt ${#RIDS[@]} ]; then
-                CURRENT_RID=${RIDS[$RID_INDEX]}
+            echo "🔹 Configuring replication peers..."
+            
+            # Parse RIDs if provided, otherwise auto-generate
+            if [ -n "$REPLICATION_RIDS" ]; then
+                IFS=',' read -ra RIDS <<< "$REPLICATION_RIDS"
             else
-                RID=$((RID + 1))
-                CURRENT_RID=$RID
+                RIDS=()
             fi
             
-            echo "  Adding peer: $peer (RID: $CURRENT_RID)"
-            cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry"
+            RID_INDEX=0
+            RID=100
+            for peer in ${REPLICATION_PEERS//,/ }; do
+                # Use provided RID or auto-generate
+                if [ ${#RIDS[@]} -gt 0 ] && [ $RID_INDEX -lt ${#RIDS[@]} ]; then
+                    CURRENT_RID=${RIDS[$RID_INDEX]}
+                else
+                    RID=$((RID + 1))
+                    CURRENT_RID=$RID
+                fi
+                
+                echo "  Adding peer: $peer (RID: $CURRENT_RID)"
+                cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry"
 dn: olcDatabase={2}mdb,cn=config
 changetype: modify
 add: olcSyncRepl
 olcSyncRepl: rid=$CURRENT_RID provider=ldap://$peer:389 binddn="$LDAP_ADMIN_DN" bindmethod=simple credentials=$LDAP_ADMIN_PASSWORD searchbase="$LDAP_BASE_DN" type=refreshAndPersist retry="5 5 300 5" timeout=1
 EOF
-            RID_INDEX=$((RID_INDEX + 1))
-        done
+                RID_INDEX=$((RID_INDEX + 1))
+            done
 
-        # Enable mirror mode
-        echo "🔹 Enabling mirror mode..."
-        cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:///
+            # Enable mirror mode
+            echo "🔹 Enabling mirror mode..."
+            cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:///
 dn: olcDatabase={2}mdb,cn=config
 changetype: modify
 add: olcMirrorMode
 olcMirrorMode: TRUE
 EOF
+        fi
     fi
 
     echo "✅ Replication configured"
