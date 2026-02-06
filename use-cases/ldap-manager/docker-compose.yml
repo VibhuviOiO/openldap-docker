@@ -1,6 +1,6 @@
 services:
   ldap-manager:
-    build: ../../ldap-manager
+    image: ghcr.io/vibhuvioio/ldap-manager:1.0.0
     container_name: ldap-manager
     ports:
       - "8000:8000"
