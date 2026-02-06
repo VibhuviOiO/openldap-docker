@@ -1,6 +1,6 @@
 services:
   openldap:
-    image: openldap-custom:latest
+    image: ghcr.io/vibhuvioio/openldap-docker/openldap:main
     container_name: openldap-vibhuvi
     hostname: openldap-vibhuvi
     env_file:
