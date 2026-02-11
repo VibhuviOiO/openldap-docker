@@ -1,9 +1,0 @@
-# User Shyam in Finance
-dn: cn=shyam,ou=finance,dc=containertalks,dc=com
-objectClass: inetOrgPerson
-cn: shyam
-sn: Shyam
-givenName: Shyam
-mail: shyam@containertalks.com
-uid: shyam
-userPassword: {SSHA}qBR9xl4DgDbHt2ru3Rr2i09Iqe4cMzNv

@@ -1,5 +1,0 @@
-# Administration Organizational Unit
-dn: ou=administration,dc=containertalks,dc=com
-objectClass: top
-objectClass: organizationalUnit
-ou: administration

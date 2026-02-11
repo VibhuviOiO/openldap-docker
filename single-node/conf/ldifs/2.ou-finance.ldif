@@ -1,5 +1,0 @@
-# Finance Organizational Unit
-dn: ou=finance,dc=containertalks,dc=com
-objectClass: top
-objectClass: organizationalUnit
-ou: finance
