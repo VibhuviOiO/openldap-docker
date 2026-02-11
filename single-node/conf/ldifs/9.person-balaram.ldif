@@ -1,7 +1,0 @@
-# Add balarama as a person
-dn: cn=balarama,ou=administration,dc=containertalks,dc=com
-objectClass: person
-cn: balarama
-sn: Balarama
-description: Balarama
-userPassword: {SSHA}nxzmSAYRzV0XFapY0QueUCKEtM+6at4u

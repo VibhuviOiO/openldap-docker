@@ -1,4 +1,0 @@
-dn: olcDatabase={2}mdb,cn=config
-changetype: modify
-replace: olcRootDN
-olcRootDN: cn=Manager,dc=vibhuvioio,dc=com
