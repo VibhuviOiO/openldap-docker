@@ -106,9 +106,18 @@ jobs:
           echo "Checking if password is configured..."
           docker exec openldap-test ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcDatabase={2}mdb)" olcRootPW 2>&1 || true
           
+          # Debug: Test slappasswd inside container
+          echo "Testing slappasswd..."
+          docker exec openldap-test slappasswd -s testpass 2>&1 || echo "slappasswd failed"
+          
+          # Debug: Check generated LDIF files
+          echo "Checking generated LDIF files..."
+          docker exec openldap-test ls -la /tmp/ldap-init/ldif/ 2>&1 || echo "No LDIF files found"
+          docker exec openldap-test cat /tmp/ldap-init/ldif/configure-database.ldif 2>&1 || echo "No configure-database.ldif"
+          
           # Debug: Check startup logs
           echo "=== Full container logs ==="
-          docker logs openldap-test 2>&1
+          docker logs openldap-test 2>&1 | head -100
           
           # Test authenticated bind with retry and debug
           echo "Testing authenticated bind..."
