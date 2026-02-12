@@ -19,14 +19,14 @@ ldap_retry() {
     shift 2
     local attempt=1
     
-    while [ $attempt -le $max_attempts ]; do
+    while [ "$attempt" -le "$max_attempts" ]; do
         if "$@" 2>/dev/null; then
             return 0
         fi
         
-        if [ $attempt -lt $max_attempts ]; then
+        if [ "$attempt" -lt "$max_attempts" ]; then
             log_warn "LDAP operation failed, retrying ($attempt/$max_attempts) in ${delay}s..."
-            sleep $delay
+            sleep "$delay"
         fi
         attempt=$((attempt + 1))
     done
@@ -39,15 +39,16 @@ ldap_retry() {
 wait_for_slapd() {
     local max_wait=${1:-30}
     local wait_interval=${2:-1}
+    local _i
     
     log_info "Waiting for slapd to initialize (max ${max_wait}s)..."
     
-    for i in $(seq 1 $max_wait); do
+    for _i in $(seq 1 "$max_wait"); do
         if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(objectClass=*)" >/dev/null 2>&1; then
             log_success "slapd is ready"
             return 0
         fi
-        sleep $wait_interval
+        sleep "$wait_interval"
     done
     
     log_error "slapd failed to start within ${max_wait} seconds"
@@ -92,7 +93,8 @@ warn_weak_password() {
 # Returns: path to temp file
 create_creds_file() {
     local password=$1
-    local tmpfile=$(mktemp /tmp/ldap_creds.XXXXXX)
+    local tmpfile
+    tmpfile=$(mktemp /tmp/ldap_creds.XXXXXX)
     chmod 600 "$tmpfile"
     echo "$password" > "$tmpfile"
     echo "$tmpfile"
