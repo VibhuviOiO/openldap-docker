@@ -1,0 +1,13 @@
+# ShellCheck configuration
+# https://github.com/koalaman/shellcheck/wiki/Control-comments
+
+# Disable SC1091: Not following sourced files
+# These are sourced at runtime in the container
+disable=SC1091
+
+# Disable SC2155: Declare and assign separately
+# In many cases, the return value is intentionally ignored
+disable=SC2155
+
+# Shell dialect
+shell=bash
