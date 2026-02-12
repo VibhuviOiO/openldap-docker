@@ -102,22 +102,26 @@ jobs:
           echo "Checking slapd configuration..."
           docker exec openldap-test ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcDatabase={2}mdb)" olcSuffix olcRootDN 2>&1 || true
           
+          # Debug: Check container status
+          echo "Checking container status..."
+          docker ps -a | grep openldap-test
+          docker inspect openldap-test --format='{{.State.Status}} {{.State.ExitCode}} {{.State.Error}}'
+          
+          # Check if slapd is running
+          echo "Checking if slapd is running..."
+          docker exec openldap-test pgrep -a slapd 2>&1 || echo "slapd not found in process list"
+          
+          # Debug: Check slapd logs
+          echo "Checking slapd logs..."
+          docker exec openldap-test cat /logs/slapd.log 2>&1 | tail -50 || echo "No slapd.log"
+          
           # Debug: Check if password is set
           echo "Checking if password is configured..."
           docker exec openldap-test ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcDatabase={2}mdb)" olcRootPW 2>&1 || true
           
-          # Debug: Test slappasswd inside container
-          echo "Testing slappasswd..."
-          docker exec openldap-test slappasswd -s testpass 2>&1 || echo "slappasswd failed"
-          
-          # Debug: Check generated LDIF files
-          echo "Checking generated LDIF files..."
-          docker exec openldap-test ls -la /tmp/ldap-init/ldif/ 2>&1 || echo "No LDIF files found"
-          docker exec openldap-test cat /tmp/ldap-init/ldif/configure-database.ldif 2>&1 || echo "No configure-database.ldif"
-          
-          # Debug: Check startup logs
-          echo "=== Full container logs ==="
-          docker logs openldap-test 2>&1 | head -100
+          # Debug: Startup logs
+          echo "=== Container startup logs ==="
+          docker logs openldap-test 2>&1 | tail -50
           
           # Test authenticated bind with retry and debug
           echo "Testing authenticated bind..."
