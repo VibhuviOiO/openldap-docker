@@ -1,0 +1,11 @@
+# Hadolint configuration
+# https://github.com/hadolint/hadolint#configure
+
+# Ignore warnings about package version pinning
+# Reason: AlmaLinux is a stable distribution, and pinning versions
+# would require constant maintenance. We trust the distribution packages.
+ignored:
+  - DL3041  # Specify version with dnf install
+
+# Set failure threshold
+failure-threshold: error

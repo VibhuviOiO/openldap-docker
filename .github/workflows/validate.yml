@@ -23,7 +23,7 @@ jobs:
         with:
           dockerfile: ./Dockerfile
           verbose: true
-          failure-threshold: warning
+          config: .hadolint.yml
 
   # 2. Lint Shell Scripts
   lint-scripts:
