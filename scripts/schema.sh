@@ -59,7 +59,8 @@ load_custom_schemas() {
             continue
         fi
         
-        local schema_name=$(basename "$schema_file" .ldif)
+        local schema_name
+        schema_name=$(basename "$schema_file" .ldif)
         
         # Check if already loaded
         if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(cn={*}$schema_name)" 2>/dev/null | grep -q "dn:"; then

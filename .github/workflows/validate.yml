@@ -37,8 +37,6 @@ jobs:
         with:
           scandir: './scripts'
           format: gcc
-        env:
-          SHELLCHECK_OPTS: -e SC1091
 
   # 3. Build and Test Container
   build-test:

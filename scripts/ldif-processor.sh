@@ -17,6 +17,9 @@ process_ldif_template() {
     shift
     local template_file="$LDIF_TEMPLATE_DIR/${template_name}.ldif"
     local output_file="$LDIF_GENERATED_DIR/${template_name}.ldif"
+    local content
+    local var_name
+    local var_value
     
     if [ ! -f "$template_file" ]; then
         echo "Error: Template file not found: $template_file" >&2
@@ -24,18 +27,18 @@ process_ldif_template() {
     fi
     
     # Start with template content
-    local content=$(cat "$template_file")
+    content=$(cat "$template_file")
     
     # Process each variable replacement
     for var_assignment in "$@"; do
-        local var_name=$(echo "$var_assignment" | cut -d'=' -f1)
-        local var_value=$(echo "$var_assignment" | cut -d'=' -f2-)
+        var_name=$(echo "$var_assignment" | cut -d'=' -f1)
+        var_value=$(echo "$var_assignment" | cut -d'=' -f2-)
         
         # Escape special characters for sed
         var_value=$(echo "$var_value" | sed 's/[&/\]/\\&/g')
         
-        # Replace placeholder
-        content=$(echo "$content" | sed "s/{{${var_name}}}/${var_value}/g")
+        # Replace placeholder using bash string replacement
+        content="${content//\{\{$var_name\}\}/$var_value}"
     done
     
     # Write to output file
@@ -50,6 +53,9 @@ process_ldif_advanced() {
     shift
     local template_file="$LDIF_TEMPLATE_DIR/${template_name}.ldif"
     local output_file="$LDIF_GENERATED_DIR/${template_name}.ldif"
+    local var_assignment
+    local var_name
+    local var_value
     
     if [ ! -f "$template_file" ]; then
         echo "Error: Template file not found: $template_file" >&2
@@ -64,9 +70,9 @@ process_ldif_advanced() {
         case "$1" in
             -v)
                 shift
-                local var_assignment=$1
-                local var_name=$(echo "$var_assignment" | cut -d'=' -f1)
-                local var_value=$(echo "$var_assignment" | cut -d'=' -f2-)
+                var_assignment=$1
+                var_name=$(echo "$var_assignment" | cut -d'=' -f1)
+                var_value=$(echo "$var_assignment" | cut -d'=' -f2-)
                 
                 # Escape special characters for sed
                 var_value=$(printf '%s' "$var_value" | sed 's/[&/\]/\\&/g')
