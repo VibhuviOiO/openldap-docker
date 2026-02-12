@@ -1,80 +1,45 @@
-# Data and schemas
-data/
-copy-schema/
+# Git
+.git
+.gitignore
+.gitattributes
 
-# Logs - keep directory structure but ignore log files
+# Documentation (keep only main README.md)
+*.md
+!README.md
+
+# Development and Testing Tools (not for production)
+dev-tools/
+test-use-cases/
 logs/
+audit-logs/
 *.log
-*.log-*
-*.gz
-!logs/.gitkeep
 
-# Environment files - IMPORTANT: Never commit passwords!
-.env
-.env.local
-.env.*.local
-**/.env
-**/logs/*.log
+# Docker (development only)
+.dockerignore
 
-# Docker volumes
-ldap-data/
-ldap-config/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-.venv
-pip-log.txt
-pip-delete-this-directory.txt
-.pytest_cache/
-
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-dist/
-dist-ssr/
-*.local
-
-# IDEs
-.vscode/
-.idea/
+# IDE
+.vscode
+.idea
 *.swp
 *.swo
 *~
 .DS_Store
 
-# Password cache
-web/backend/.cache/
-.cache/
-
-# Build artifacts
-*.egg-info/
-build/
-*.whl
-
 # Temporary files
+tmp/
+temp/
 *.tmp
+
+# Backup files
+backups/
 *.bak
 *.backup
-.temp/
-tmp/
 
-# SSL certificates (if generated locally)
-*.pem
-*.key
-*.crt
-*.csr
+# Local environment
+.env
+.env.*
+!.env.example
 
-# OS
-Thumbs.db
-.Spotlight-V100
-.Trashes
+# Build artifacts
+*.tar.gz
+*.zip

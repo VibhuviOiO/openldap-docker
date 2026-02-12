@@ -1,0 +1,5 @@
+# Load syncprov module
+dn: cn=module{0},cn=config
+objectClass: olcModuleList
+cn: module{0}
+olcModuleLoad: syncprov.la

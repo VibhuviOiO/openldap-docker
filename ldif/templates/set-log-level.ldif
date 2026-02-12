@@ -1,0 +1,6 @@
+# Set log level
+# Variables: LOG_LEVEL
+dn: cn=config
+changetype: modify
+replace: olcLogLevel
+olcLogLevel: {{LOG_LEVEL}}

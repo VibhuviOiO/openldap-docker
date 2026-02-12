@@ -1,0 +1,26 @@
+# Create default password policy
+# Variables: LDAP_BASE_DN
+dn: cn=default,ou=Policies,{{LDAP_BASE_DN}}
+objectClass: organizationalUnit
+ou: Policies
+
+dn: cn=default,ou=Policies,{{LDAP_BASE_DN}}
+objectClass: pwdPolicy
+objectClass: person
+cn: default
+sn: default
+pwdAttribute: userPassword
+pwdMinAge: 0
+pwdMaxAge: 7776000
+pwdInHistory: 5
+pwdCheckQuality: 1
+pwdMinLength: 8
+pwdExpireWarning: 1209600
+pwdGraceAuthNLimit: 0
+pwdLockout: TRUE
+pwdLockoutDuration: 1800
+pwdMaxFailure: 5
+pwdFailureCountInterval: 1800
+pwdMustChange: TRUE
+pwdAllowUserChange: TRUE
+pwdSafeModify: FALSE

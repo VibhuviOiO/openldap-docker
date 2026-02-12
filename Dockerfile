@@ -1,20 +1,53 @@
 FROM almalinux:9
 
-RUN dnf -y update && \
-    dnf -y install procps-ng iproute net-tools gettext rsyslog && \
-    dnf -y install dnf-plugins-core epel-release && \
+# Install OpenLDAP packages (requires CRB repo)
+RUN dnf install -y dnf-plugins-core epel-release && \
     dnf config-manager --set-enabled crb && \
-    dnf -y install openldap openldap-clients openldap-servers && \
-    dnf clean all
+    dnf install -y --nodocs \
+        openldap \
+        openldap-clients \
+        openldap-servers \
+        logrotate \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf/*
 
-RUN mkdir -p /var/lib/ldap /etc/openldap/slapd.d /var/run/openldap /logs /custom-schema /docker-entrypoint-initdb.d && \
-    chown -R ldap:ldap /var/lib/ldap /etc/openldap/slapd.d /var/run/openldap /logs /custom-schema && \
-    touch /logs/slapd.log && chown ldap:ldap /logs/slapd.log
+# Create directories with proper permissions
+RUN mkdir -p \
+        /var/lib/ldap \
+        /etc/openldap/slapd.d \
+        /var/run/openldap \
+        /logs \
+        /custom-schema \
+        /docker-entrypoint-initdb.d \
+        /usr/local/bin/scripts \
+        /usr/local/bin/ldif/templates \
+        /usr/local/bin/ldif/generated \
+        /tmp/ldap-init \
+    && chown -R ldap:ldap \
+        /var/lib/ldap \
+        /etc/openldap/slapd.d \
+        /var/run/openldap \
+        /usr/local/bin/ldif/generated \
+        /tmp/ldap-init \
+    && chmod 750 /var/lib/ldap /etc/openldap/slapd.d \
+    && chmod 755 /usr/local/bin/ldif/templates /usr/local/bin/ldif/generated /tmp/ldap-init
 
-COPY startup.sh /usr/local/bin/startup.sh
+# Copy LDIF templates (read-only, owned by root)
+COPY --chown=root:root --chmod=644 ldif/templates/*.ldif /usr/local/bin/ldif/templates/
 
-RUN chmod +x /usr/local/bin/startup.sh
+# Copy scripts (owned by root, executable)
+COPY --chown=root:root --chmod=755 scripts/*.sh /usr/local/bin/scripts/
+COPY --chown=root:root --chmod=755 startup.sh /usr/local/bin/
 
+# Expose LDAP ports
 EXPOSE 389 636
 
+# Health check (runs as root, but script switches to ldap)
+HEALTHCHECK --interval=30s \
+            --timeout=5s \
+            --start-period=30s \
+            --retries=3 \
+    CMD /usr/local/bin/scripts/healthcheck.sh basic || exit 1
+
+# Run as root (startup script will drop to ldap user)
 CMD ["/usr/local/bin/startup.sh"]

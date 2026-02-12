@@ -1,0 +1,8 @@
+# Set query limits to prevent DoS
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+add: olcLimits
+olcLimits: dn.base="{{LDAP_ADMIN_DN}}" size=unlimited time=unlimited
+-
+add: olcLimits
+olcLimits: users size=500 size.hard=1000 time=30 time.hard=60

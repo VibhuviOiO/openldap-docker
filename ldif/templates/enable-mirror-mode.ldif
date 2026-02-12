@@ -1,0 +1,5 @@
+# Enable mirror mode for multi-master replication
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+add: olcMirrorMode
+olcMirrorMode: TRUE

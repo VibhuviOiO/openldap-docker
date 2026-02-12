@@ -1,0 +1,10 @@
+# Configure TLS/SSL
+# Variables: LDAP_TLS_CERT, LDAP_TLS_KEY, LDAP_TLS_CA (optional)
+dn: cn=config
+changetype: modify
+add: olcTLSCertificateFile
+olcTLSCertificateFile: {{LDAP_TLS_CERT}}
+-
+add: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: {{LDAP_TLS_KEY}}
+{{TLS_CA_ENTRY}}

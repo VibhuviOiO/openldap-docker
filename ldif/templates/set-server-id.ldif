@@ -1,0 +1,6 @@
+# Set server ID for replication
+# Variables: SERVER_ID
+dn: cn=config
+changetype: modify
+replace: olcServerID
+olcServerID: {{SERVER_ID}}

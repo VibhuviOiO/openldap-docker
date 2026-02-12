@@ -1,177 +1,196 @@
 # OpenLDAP Docker
 
-Production-ready OpenLDAP deployment with Docker supporting single-node and multi-master replication.
+Production-ready OpenLDAP container with enterprise features.
 
 ## Features
 
-- **AlmaLinux 9** base image
-- **Single-node** and **Multi-master** (3-node) replication support
-- **Custom schema** support with hot-loading
-- **Activity logging** with automatic rotation
-- **Monitoring** via cn=Monitor backend
-- **Environment-driven** configuration (idempotent startup)
-- **TLS/SSL** ready
+### Core Features
+- **Multi-master replication** - High availability with 3+ node clusters
+- **TLS/SSL support** - Secure LDAP connections
+- **Custom schema support** - Hot-load your own object classes
+- **Database indices** - Optimized for performance (cn, uid, mail, sn, givenname, member, memberOf)
+- **Query limits** - DoS protection (500 soft / 1000 hard limit)
+- **Connection timeouts** - Auto-close idle connections (600s)
+
+### Security Features
+- **Non-root execution** - Runs as `ldap` user (UID 55)
+- **Secure ACLs** - Password protection, authenticated access required
+- **Health checks** - Built-in Docker health monitoring
+- **Signal handling** - Graceful shutdown on SIGTERM/SIGINT
+
+### Optional Overlays
+- **memberOf** - Track group membership on user entries
+- **ppolicy** - Password policies (min length, history, lockout)
+- **auditlog** - Audit trail of all modifications
 
 ## Quick Start
 
-### Single Node Deployment
+### Single Container
 
 ```bash
-cp .env.example .env
-# Edit .env with your configuration
-docker-compose -f docker-compose.single-node.yml up -d
+# Run OpenLDAP with default settings
+docker run -d \
+  --name openldap \
+  -e LDAP_DOMAIN=example.com \
+  -e LDAP_ADMIN_PASSWORD=changeme \
+  -p 389:389 \
+  -v ldap-data:/var/lib/ldap \
+  -v ldap-config:/etc/openldap/slapd.d \
+  ghcr.io/vibhuvioio/openldap-docker/openldap:main
+
+# Test connection
+ldapsearch -x -H ldap://localhost:389 \
+  -D "cn=Manager,dc=example,dc=com" \
+  -w changeme \
+  -b "dc=example,dc=com"
 ```
 
-Access LDAP at `ldap://localhost:389`
+### Multi-Node Cluster
 
-### Multi-Master Deployment
+Run 3-node multi-master replication:
 
+**Node 1:**
 ```bash
-docker-compose -f docker-compose.multi-master.yml up -d
+docker run -d \
+  --name openldap-node1 \
+  --hostname openldap-node1 \
+  -e LDAP_DOMAIN=example.com \
+  -e LDAP_ADMIN_PASSWORD=changeme \
+  -e ENABLE_REPLICATION=true \
+  -e SERVER_ID=1 \
+  -e REPLICATION_PEERS=openldap-node2,openldap-node3 \
+  -p 389:389 \
+  -v ldap-data-node1:/var/lib/ldap \
+  -v ldap-config-node1:/etc/openldap/slapd.d \
+  --network ldap-network \
+  ghcr.io/vibhuvioio/openldap-docker/openldap:main
 ```
 
-Three nodes: `ldap://localhost:389`, `ldap://localhost:390`, `ldap://localhost:391`
+**Node 2:**
+```bash
+docker run -d \
+  --name openldap-node2 \
+  --hostname openldap-node2 \
+  -e LDAP_DOMAIN=example.com \
+  -e LDAP_ADMIN_PASSWORD=changeme \
+  -e ENABLE_REPLICATION=true \
+  -e SERVER_ID=2 \
+  -e REPLICATION_PEERS=openldap-node1,openldap-node3 \
+  -p 390:389 \
+  -v ldap-data-node2:/var/lib/ldap \
+  -v ldap-config-node2:/etc/openldap/slapd.d \
+  --network ldap-network \
+  ghcr.io/vibhuvioio/openldap-docker/openldap:main
+```
+
+**Node 3:**
+```bash
+docker run -d \
+  --name openldap-node3 \
+  --hostname openldap-node3 \
+  -e LDAP_DOMAIN=example.com \
+  -e LDAP_ADMIN_PASSWORD=changeme \
+  -e ENABLE_REPLICATION=true \
+  -e SERVER_ID=3 \
+  -e REPLICATION_PEERS=openldap-node1,openldap-node2 \
+  -p 391:389 \
+  -v ldap-data-node3:/var/lib/ldap \
+  -v ldap-config-node3:/etc/openldap/slapd.d \
+  --network ldap-network \
+  ghcr.io/vibhuvioio/openldap-docker/openldap:main
+```
 
 ## Configuration
 
 ### Environment Variables
 
-```bash
-LDAP_DOMAIN=example.com
-LDAP_ORGANIZATION=Example Organization
-LDAP_ADMIN_PASSWORD=changeme
-LDAP_CONFIG_PASSWORD=changeme
-ENABLE_REPLICATION=false
-ENABLE_MONITORING=true
-SERVER_ID=1
-INCLUDE_SCHEMAS=cosine,inetorgperson,nis
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LDAP_DOMAIN` | `example.com` | LDAP domain |
+| `LDAP_ADMIN_PASSWORD` | `admin` | Admin password |
+| `LDAP_CONFIG_PASSWORD` | `config` | Config DB password |
+| `ENABLE_REPLICATION` | `false` | Enable multi-master replication |
+| `SERVER_ID` | `1` | Server ID (for replication) |
+| `REPLICATION_PEERS` | - | Comma-separated peer hostnames |
+| `ENABLE_MEMBEROF` | `false` | Enable memberOf overlay |
+| `ENABLE_PASSWORD_POLICY` | `false` | Enable password policy |
+| `ENABLE_AUDIT_LOG` | `false` | Enable audit logging |
+| `LDAP_TLS_CERT` | - | Path to TLS certificate |
+| `LDAP_TLS_KEY` | - | Path to TLS key |
+
+### Volumes
+
+| Path | Purpose |
+|------|---------|
+| `/var/lib/ldap` | Database files |
+| `/etc/openldap/slapd.d` | Configuration |
+| `/logs` | Log output (slapd.log, audit.log) |
+| `/custom-schema` | Custom LDIF schemas |
+| `/docker-entrypoint-initdb.d` | Initialization scripts |
+
+## Docker Compose
+
+```yaml
+version: '3.8'
+
+services:
+  openldap:
+    image: ghcr.io/vibhuvioio/openldap-docker/openldap:main
+    environment:
+      - LDAP_DOMAIN=example.com
+      - LDAP_ADMIN_PASSWORD=changeme
+      - ENABLE_MEMBEROF=true
+    ports:
+      - "389:389"
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/openldap/slapd.d
+      - ./logs:/logs
+
+volumes:
+  ldap-data:
+  ldap-config:
 ```
 
-### Custom Schemas
+## Kubernetes
 
-Place `.ldif` schema files in `./custom-schema/` directory:
-
-```bash
-./custom-schema/
-  └── MyCustomSchema.ldif
-```
-
-Schemas are automatically loaded on container startup.
-
-## Management Options
-
-### Command Line Tools
-Use standard LDAP utilities:
-```bash
-ldapsearch -x -H ldap://localhost:389 -b "dc=example,dc=com" -D "cn=Manager,dc=example,dc=com" -w changeme
-ldapadd -x -D "cn=Manager,dc=example,dc=com" -w changeme -f data.ldif
-ldapmodify -x -D "cn=Manager,dc=example,dc=com" -w changeme -f changes.ldif
-```
-
-### GUI Clients
-- **Apache Directory Studio** - Eclipse-based LDAP browser
-- **phpLDAPadmin** - Web-based PHP interface
-- **JXplorer** - Java LDAP browser
-
-### Modern Web UI (Recommended)
-For a modern React-based management interface:
-
-**[LDAP Manager](https://github.com/your-org/ldap-manager)** - Standalone web UI with:
-- Multi-cluster management
-- Server-side pagination and search
-- Custom schema support
-- Real-time monitoring
-- Password caching
-
-```bash
-# Quick start with LDAP Manager
-git clone https://github.com/your-org/ldap-manager.git
-cd ldap-manager
-cp config.example.yml config.yml
-# Edit config.yml to point to your OpenLDAP server
-docker-compose up -d
-# Access at http://localhost:5173
-```
-
-## Use Cases
-
-Complete standalone deployments in `use-cases/` directory:
-
-### Vibhuvioio.com Example
-```bash
-cd use-cases/vibhuvioio-com-singlenode
-docker-compose up -d
-```
-
-Includes:
-- Custom MahabharataCharacter schema
-- 14 sample users (11 custom + 2 legacy + 1 standard)
-- 6 groups with various patterns
-- 5 organizational units
-- NIS map objects
-
-## Activity Logging
-
-- Logs redirected to `/logs/slapd.log`
-- Date-based rotation with logrotate
-- Bind-mounted to host for direct access
-- Compressed archives: `slapd.log-YYYY-MM-DD.gz`
-
-See [Activity Logs Documentation](docs/ACTIVITY_LOGS.md)
-
-## Monitoring
-
-- cn=Monitor backend (EXTERNAL auth only)
-- Health status checks
-- Connection and operation metrics
-
-See [Monitoring Documentation](docs/MONITORING.md)
-
-## Complex LDAP Patterns Supported
-
-- ✅ Multiple organizational units
-- ✅ Custom objectClass schemas
-- ✅ Legacy Unix accounts (account without inetOrgPerson)
-- ✅ Standard inetOrgPerson entries
-- ✅ groupOfNames, groupOfUniqueNames, posixGroup
-- ✅ Groups with empty member attributes
-- ✅ nisMap objects
-- ✅ Multi-value attributes
-- ✅ Custom schema inheritance
-
-## Requirements
-
-- Docker 20.10+
-- Docker Compose 2.0+
-- 2GB RAM minimum
-- 10GB disk space
-
-## Security Notes
-
-- Change default passwords in production
-- Use TLS/SSL for production deployments
-- Restrict network access to LDAP ports
-- Regular password rotation
+See [LDAP Manager Documentation](https://vibhuvioio.com/ldap-manager/) for:
+- Helm charts
+- Kubernetes deployment guides
+- Production best practices
+- Monitoring and alerting
 
 ## Documentation
 
-- [Setup Guide](SETUP.md)
-- [Activity Logs](docs/ACTIVITY_LOGS.md)
-- [Activity Log Reference](docs/ACTIVITY_LOG_REFERENCE.md)
-- [Monitoring](docs/MONITORING.md)
+Full documentation available at:
+- **LDAP Manager Docs**: https://vibhuvioio.com/ldap-manager/
+- **Use Cases**: Available in [ldap-manager/use-cases/](https://github.com/your-org/ldap-manager/tree/main/use-cases)
+
+## Overlays Guide
+
+### Enable memberOf
+```yaml
+environment:
+  - ENABLE_MEMBEROF=true
+```
+Allows queries like: `(memberOf=cn=admins,ou=Groups,dc=example,dc=com)`
+
+### Enable Audit Logging
+```yaml
+environment:
+  - ENABLE_AUDIT_LOG=true
+volumes:
+  - ./logs:/logs
+```
+View audit trail: `docker exec openldap cat /logs/audit.log`
+
+### Enable Password Policy
+```yaml
+environment:
+  - ENABLE_PASSWORD_POLICY=true
+```
+Enforces: min 8 chars, 5 history, lockout after 5 failures
 
 ## License
 
-MIT License - See LICENSE file
-
-## Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
-## Support
-
-For issues and questions, please open a GitHub issue.
+MIT License

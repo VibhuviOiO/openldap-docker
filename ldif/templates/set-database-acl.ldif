@@ -1,0 +1,12 @@
+# Set database access controls
+# Variables: LDAP_ADMIN_DN
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+add: olcAccess
+olcAccess: {0}to attrs=userPassword,shadowLastChange by dn="{{LDAP_ADMIN_DN}}" write by anonymous auth by self write by * none
+-
+add: olcAccess
+olcAccess: {1}to dn.base="" by * read
+-
+add: olcAccess
+olcAccess: {2}to * by dn="{{LDAP_ADMIN_DN}}" write by * read
