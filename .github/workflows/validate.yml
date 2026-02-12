@@ -94,19 +94,27 @@ jobs:
           echo "Testing anonymous bind..."
           docker exec openldap-test ldapsearch -x -H ldap://localhost:389 -b "" -s base
           
-          # Test authenticated bind with retry
+          # Debug: Check if directory exists
+          echo "Checking directory status..."
+          docker exec openldap-test ls -la /var/lib/ldap/
+          
+          # Debug: Try to see what's in config
+          echo "Checking slapd configuration..."
+          docker exec openldap-test ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcDatabase={2}mdb)" olcSuffix olcRootDN 2>&1 || true
+          
+          # Test authenticated bind with retry and debug
           echo "Testing authenticated bind..."
           for i in {1..20}; do
+            echo "Attempt $i/20..."
             if docker exec openldap-test ldapsearch \
               -x -H ldap://localhost:389 \
               -D "cn=Manager,dc=test,dc=com" \
               -w testpass \
               -b "dc=test,dc=com" \
-              -s base >/dev/null 2>&1; then
+              -s base 2>&1; then
               echo "✅ LDAP connection successful"
               exit 0
             fi
-            echo "Attempt $i/20..."
             sleep 3
           done
           echo "❌ Failed to connect after 20 attempts"
