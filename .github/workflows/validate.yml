@@ -102,6 +102,14 @@ jobs:
           echo "Checking slapd configuration..."
           docker exec openldap-test ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcDatabase={2}mdb)" olcSuffix olcRootDN 2>&1 || true
           
+          # Debug: Check if password is set
+          echo "Checking if password is configured..."
+          docker exec openldap-test ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcDatabase={2}mdb)" olcRootPW 2>&1 || true
+          
+          # Debug: Check startup logs
+          echo "=== Full container logs ==="
+          docker logs openldap-test 2>&1
+          
           # Test authenticated bind with retry and debug
           echo "Testing authenticated bind..."
           for i in {1..20}; do
