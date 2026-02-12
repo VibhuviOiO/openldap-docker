@@ -73,42 +73,44 @@ jobs:
           echo "Waiting for LDAP to start..."
           for i in {1..60}; do
             if docker exec openldap-test /usr/local/bin/scripts/healthcheck.sh basic 2>/dev/null | grep -q "OK"; then
-              echo "✅ LDAP is ready"
+              echo "✅ LDAP is responding"
               break
             fi
             echo "Attempt $i/60..."
             sleep 2
           done
+          
+          # Wait for initialization to fully complete (startup script finishes)
+          echo "Waiting for initialization to complete..."
+          sleep 15
+          
+          # Show logs to verify initialization status
+          echo "Container logs:"
+          docker logs openldap-test 2>&1 | tail -30
       
-      - name: Test health check
+      - name: Test LDAP connection
         run: |
-          docker exec openldap-test /usr/local/bin/scripts/healthcheck.sh basic
-      
-      - name: Wait for initialization
-        run: |
-          echo "Waiting for LDAP initialization to complete..."
-          for i in {1..30}; do
+          # Test anonymous bind first
+          echo "Testing anonymous bind..."
+          docker exec openldap-test ldapsearch -x -H ldap://localhost:389 -b "" -s base
+          
+          # Test authenticated bind with retry
+          echo "Testing authenticated bind..."
+          for i in {1..20}; do
             if docker exec openldap-test ldapsearch \
               -x -H ldap://localhost:389 \
               -D "cn=Manager,dc=test,dc=com" \
               -w testpass \
               -b "dc=test,dc=com" \
-              -s base 2>/dev/null | grep -q "dc=test"; then
-              echo "✅ Initialization complete"
-              break
+              -s base >/dev/null 2>&1; then
+              echo "✅ LDAP connection successful"
+              exit 0
             fi
-            echo "Waiting... attempt $i/30"
-            sleep 2
+            echo "Attempt $i/20..."
+            sleep 3
           done
-
-      - name: Test LDAP connection
-        run: |
-          docker exec openldap-test ldapsearch \
-            -x -H ldap://localhost:389 \
-            -D "cn=Manager,dc=test,dc=com" \
-            -w testpass \
-            -b "dc=test,dc=com" \
-            -s base
+          echo "❌ Failed to connect after 20 attempts"
+          exit 1
       
       - name: Test overlay configuration
         run: |
