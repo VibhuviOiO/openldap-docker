@@ -36,7 +36,7 @@ docker run -d \
   -p 389:389 \
   -v ldap-data:/var/lib/ldap \
   -v ldap-config:/etc/openldap/slapd.d \
-  ghcr.io/vibhuvioio/openldap-docker/openldap:main
+  ghcr.io/vibhuvioio/openldap:latest
 
 # Test connection
 ldapsearch -x -H ldap://localhost:389 \
@@ -63,7 +63,7 @@ docker run -d \
   -v ldap-data-node1:/var/lib/ldap \
   -v ldap-config-node1:/etc/openldap/slapd.d \
   --network ldap-network \
-  ghcr.io/vibhuvioio/openldap-docker/openldap:main
+  ghcr.io/vibhuvioio/openldap:latest
 ```
 
 **Node 2:**
@@ -80,7 +80,7 @@ docker run -d \
   -v ldap-data-node2:/var/lib/ldap \
   -v ldap-config-node2:/etc/openldap/slapd.d \
   --network ldap-network \
-  ghcr.io/vibhuvioio/openldap-docker/openldap:main
+  ghcr.io/vibhuvioio/openldap:latest
 ```
 
 **Node 3:**
@@ -97,7 +97,7 @@ docker run -d \
   -v ldap-data-node3:/var/lib/ldap \
   -v ldap-config-node3:/etc/openldap/slapd.d \
   --network ldap-network \
-  ghcr.io/vibhuvioio/openldap-docker/openldap:main
+  ghcr.io/vibhuvioio/openldap:latest
 ```
 
 ## Configuration
@@ -135,7 +135,7 @@ version: '3.8'
 
 services:
   openldap:
-    image: ghcr.io/vibhuvioio/openldap-docker/openldap:main
+    image: ghcr.io/vibhuvioio/openldap:latest
     environment:
       - LDAP_DOMAIN=example.com
       - LDAP_ADMIN_PASSWORD=changeme
