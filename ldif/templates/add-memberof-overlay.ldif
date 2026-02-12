@@ -1,0 +1,11 @@
+# Add memberOf overlay for automatic member tracking
+# Variables: LDAP_BASE_DN
+dn: olcOverlay=memberof,olcDatabase={2}mdb,cn=config
+objectClass: olcOverlayConfig
+objectClass: olcMemberOfConfig
+olcOverlay: memberof
+olcMemberOfDangling: ignore
+olcMemberOfRefInt: TRUE
+olcMemberOfGroupOC: groupOfNames
+olcMemberOfMemberAD: member
+olcMemberOfMemberOfAD: memberOf

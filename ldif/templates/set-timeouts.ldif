@@ -1,0 +1,11 @@
+# Set idle timeout and connection limits
+dn: cn=config
+changetype: modify
+add: olcIdleTimeout
+olcIdleTimeout: 600
+-
+add: olcSockbufMaxIncoming
+olcSockbufMaxIncoming: 262143
+-
+add: olcSockbufMaxIncomingAuth
+olcSockbufMaxIncomingAuth: 16777215

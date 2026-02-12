@@ -1,0 +1,6 @@
+# Add referential integrity overlay (required for memberOf)
+dn: olcOverlay=refint,olcDatabase={2}mdb,cn=config
+objectClass: olcOverlayConfig
+objectClass: olcRefintConfig
+olcOverlay: refint
+olcRefintAttribute: member memberOf

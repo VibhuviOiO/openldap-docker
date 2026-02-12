@@ -1,0 +1,5 @@
+# Enable database monitoring
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+add: olcMonitoring
+olcMonitoring: TRUE

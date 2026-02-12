@@ -1,0 +1,21 @@
+# Create base domain entries
+# Variables: LDAP_BASE_DN, LDAP_ORGANIZATION, DC_PARTS[0], LDAP_ADMIN_DN
+dn: {{LDAP_BASE_DN}}
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: {{LDAP_ORGANIZATION}}
+dc: {{DC_PARTS_0}}
+
+dn: {{LDAP_ADMIN_DN}}
+objectClass: organizationalRole
+cn: Manager
+description: Directory Manager
+
+dn: ou=People,{{LDAP_BASE_DN}}
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Group,{{LDAP_BASE_DN}}
+objectClass: organizationalUnit
+ou: Group

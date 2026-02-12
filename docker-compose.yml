@@ -1,0 +1,58 @@
+services:
+  openldap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openldap
+    environment:
+      # Required
+      - LDAP_DOMAIN=example.com
+      - LDAP_ADMIN_PASSWORD=changeme-strong-password
+      
+      # Optional (defaults shown)
+      # - LDAP_ORGANIZATION=Example Organization
+      # - LDAP_CONFIG_PASSWORD=config
+      # - ENABLE_REPLICATION=false
+      # - ENABLE_MONITORING=true
+      # - ENABLE_MEMBEROF=false
+      # - LDAP_LOG_LEVEL=stats stats2
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      # Required: Persistent data
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/openldap/slapd.d
+      
+      # Required: Logs (even with read-only rootfs)
+      - ldap-logs:/logs
+      
+      # Optional: Custom schemas
+      # - ./custom-schema:/custom-schema:ro
+      
+      # Optional: Initialization scripts
+      # - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      
+      # Optional: TLS certificates
+      # - ./certs:/certs:ro
+    
+    # Security: Read-only rootfs with tmpfs for temporary files
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/openldap
+    
+    # Health check built into image
+    healthcheck:
+      test: ["/usr/local/bin/scripts/healthcheck.sh", "basic"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    
+    restart: unless-stopped
+
+volumes:
+  ldap-data:
+  ldap-config:
+  ldap-logs:

@@ -1,0 +1,7 @@
+# Add auditlog overlay
+dn: olcOverlay=auditlog,olcDatabase={2}mdb,cn=config
+changetype: add
+objectClass: olcOverlayConfig
+objectClass: olcAuditLogConfig
+olcOverlay: auditlog
+olcAuditlogFile: /logs/audit.log

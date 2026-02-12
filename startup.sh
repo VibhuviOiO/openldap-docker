@@ -1,294 +1,299 @@
 #!/bin/bash
 set -e
 
+#!/bin/bash
+set -e
+
+# Fix permissions for mounted volumes (run as root initially)
+fix_permissions() {
+    # Only run if we're root
+    if [ "$(id -u)" = "0" ]; then
+        log_info "Fixing permissions for mounted volumes..."
+        # Fix ownership of volumes that need to be writable by ldap user
+        for dir in /logs /var/lib/ldap /etc/openldap/slapd.d /var/run/openldap /tmp/ldap-init /usr/local/bin/ldif/generated; do
+            if [ -d "$dir" ]; then
+                chown -R ldap:ldap "$dir" 2>/dev/null || true
+                chmod 755 "$dir" 2>/dev/null || true
+            fi
+        done
+    fi
+}
+
+# Source helper scripts
+SCRIPT_DIR="/usr/local/bin/scripts"
+source "$SCRIPT_DIR/utils.sh"
+source "$SCRIPT_DIR/config.sh"
+source "$SCRIPT_DIR/schema.sh"
+source "$SCRIPT_DIR/replication.sh"
+
+# Fix permissions (must run before anything else)
+fix_permissions
+
 # Default values
 : "${LDAP_LOG_LEVEL:=256}"
 : "${LDAP_DOMAIN:=example.com}"
 : "${LDAP_ORGANIZATION:=Example Organization}"
 : "${LDAP_ADMIN_PASSWORD:=admin}"
+: "${LDAP_ADMIN_PASSWORD_FILE:=}"
 : "${LDAP_CONFIG_PASSWORD:=config}"
+: "${LDAP_CONFIG_PASSWORD_FILE:=}"
 : "${ENABLE_REPLICATION:=false}"
 : "${ENABLE_MONITORING:=true}"
+: "${ENABLE_MEMBEROF:=false}"
+: "${ENABLE_PASSWORD_POLICY:=false}"
+: "${ENABLE_AUDIT_LOG:=false}"
 : "${SERVER_ID:=1}"
 : "${INCLUDE_SCHEMAS:=}"
+: "${LDAP_PORT:=389}"
+: "${LDAPS_PORT:=636}"
 
-# Derived values
-IFS='.' read -ra DC_PARTS <<< "$LDAP_DOMAIN"
-LDAP_BASE_DN=$(printf "dc=%s," "${DC_PARTS[@]}" | sed 's/,$//')
-LDAP_ADMIN_DN="cn=Manager,${LDAP_BASE_DN}"
-
-echo "🚀 Starting OpenLDAP initialization..."
-echo "   Domain: $LDAP_DOMAIN"
-echo "   Base DN: $LDAP_BASE_DN"
-echo "   Replication: $ENABLE_REPLICATION"
-echo "   Monitoring: $ENABLE_MONITORING"
-echo "   Server ID: $SERVER_ID"
-
-# Generate password hashes
-ADMIN_HASH=$(slappasswd -s "$LDAP_ADMIN_PASSWORD")
-CONFIG_HASH=$(slappasswd -s "$LDAP_CONFIG_PASSWORD")
-
-# Start slapd in background for configuration
-mkdir -p /logs
-chown ldap:ldap /logs
-/usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d 1 >/dev/null 2>&1 &
-SLAPD_PID=$!
-
-# Wait for slapd to be ready
-echo "⏳ Waiting for slapd to initialize..."
-for i in {1..30}; do
-    if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(objectClass=*)" >/dev/null 2>&1; then
-        echo "✅ slapd is ready"
-        break
-    fi
-    sleep 1
-done
-if [ $i -eq 30 ]; then
-    echo "❌ slapd failed to start"
-    exit 1
+# Load passwords from files if specified (more secure than env vars)
+if [ -n "$LDAP_ADMIN_PASSWORD_FILE" ] && [ -f "$LDAP_ADMIN_PASSWORD_FILE" ]; then
+    LDAP_ADMIN_PASSWORD=$(cat "$LDAP_ADMIN_PASSWORD_FILE")
+    log_info "Loaded admin password from file"
 fi
 
-# Check if already configured
-if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcDatabase={2}mdb)" 2>/dev/null | grep -q "olcSuffix: $LDAP_BASE_DN"; then
-    echo "ℹ️  Database already configured"
-else
-    echo "🔧 Configuring OpenLDAP..."
-
-    # Set config password
-    echo "🔹 Setting config password..."
-    cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry"
-dn: olcDatabase={0}config,cn=config
-changetype: modify
-add: olcRootPW
-olcRootPW: $CONFIG_HASH
-EOF
-
-    # Configure database
-    echo "🔹 Configuring database..."
-    cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry"
-dn: olcDatabase={2}mdb,cn=config
-changetype: modify
-replace: olcSuffix
-olcSuffix: $LDAP_BASE_DN
--
-replace: olcRootDN
-olcRootDN: $LDAP_ADMIN_DN
--
-add: olcRootPW
-olcRootPW: $ADMIN_HASH
-EOF
-
-    # Set database access
-    echo "🔹 Setting database access..."
-    cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry"
-dn: olcDatabase={2}mdb,cn=config
-changetype: modify
-add: olcAccess
-olcAccess: {0}to attrs=userPassword,shadowLastChange by dn="$LDAP_ADMIN_DN" write by anonymous auth by self write by * none
--
-add: olcAccess
-olcAccess: {1}to dn.base="" by * read
--
-add: olcAccess
-olcAccess: {2}to * by dn="$LDAP_ADMIN_DN" write by * read
-EOF
-
-    # Set monitor access
-    if [ "$ENABLE_MONITORING" = "true" ]; then
-        echo "🔹 Enabling cn=Monitor access for Manager DN..."
-        cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry"
-dn: olcDatabase={1}monitor,cn=config
-changetype: modify
-replace: olcAccess
-olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.base="$LDAP_ADMIN_DN" read by * none
-EOF
-    else
-        echo "🔹 Monitoring disabled - cn=Monitor not accessible"
-    fi
-
-    cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry"
-dn: cn=config
-changetype: modify
-replace: olcLogLevel
-olcLogLevel: stats stats2
-EOF
-
-    cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry"
-dn: olcDatabase={2}mdb,cn=config
-changetype: modify
-add: olcMonitoring
-olcMonitoring: TRUE
-EOF
-
-    echo "✅ Database configured"
+if [ -n "$LDAP_CONFIG_PASSWORD_FILE" ] && [ -f "$LDAP_CONFIG_PASSWORD_FILE" ]; then
+    LDAP_CONFIG_PASSWORD=$(cat "$LDAP_CONFIG_PASSWORD_FILE")
+    log_info "Loaded config password from file"
 fi
 
-# Create base domain if it doesn't exist
-if ! ldapsearch -x -H ldap://localhost:389 -b "$LDAP_BASE_DN" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -s base "(objectClass=*)" >/dev/null 2>&1; then
-    echo "🔹 Creating base domain..."
-    cat <<EOF | ldapadd -x -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" 2>&1 | grep -v "adding new entry"
-dn: $LDAP_BASE_DN
-objectClass: top
-objectClass: dcObject
-objectClass: organization
-o: $LDAP_ORGANIZATION
-dc: ${DC_PARTS[0]}
+# Export for use in sourced scripts
+export LDAP_DOMAIN LDAP_ORGANIZATION LDAP_ADMIN_PASSWORD LDAP_CONFIG_PASSWORD
+export ENABLE_REPLICATION ENABLE_MONITORING ENABLE_MEMBEROF ENABLE_PASSWORD_POLICY ENABLE_AUDIT_LOG SERVER_ID
 
-dn: $LDAP_ADMIN_DN
-objectClass: organizationalRole
-cn: Manager
-description: Directory Manager
+# Global variable to track slapd PID
+SLAPD_PID=""
 
-dn: ou=People,$LDAP_BASE_DN
-objectClass: organizationalUnit
-ou: People
-
-dn: ou=Group,$LDAP_BASE_DN
-objectClass: organizationalUnit
-ou: Group
-EOF
-    echo "✅ Base domain created"
-else
-    echo "ℹ️  Base domain already exists"
-fi
-
-# Load schemas
-if [ -n "$INCLUDE_SCHEMAS" ]; then
-    echo "📦 Loading schemas: $INCLUDE_SCHEMAS"
-    IFS=',' read -ra SCHEMAS <<< "$INCLUDE_SCHEMAS"
-    for schema in "${SCHEMAS[@]}"; do
-        SCHEMA_FILE="/etc/openldap/schema/${schema}.ldif"
-        if [ -f "$SCHEMA_FILE" ]; then
-            if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(cn={*}$schema)" 2>/dev/null | grep -q "dn:"; then
-                echo "  Loading $schema..."
-                ldapadd -Y EXTERNAL -H ldapi:/// -f "$SCHEMA_FILE" 2>/dev/null && echo "  ✅ $schema loaded" || echo "  ⚠️  $schema failed"
-            fi
-        fi
-    done
-fi
-
-# Load custom schemas
-if [ -d "/custom-schema" ] && [ "$(ls -A /custom-schema/*.ldif 2>/dev/null)" ]; then
-    echo "📦 Loading custom schemas..."
-    for schema_file in /custom-schema/*.ldif; do
-        schema_name=$(basename "$schema_file" .ldif)
-        if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(cn={*}$schema_name)" 2>/dev/null | grep -q "dn:"; then
-            echo "  Loading $schema_name..."
-            ldapadd -Y EXTERNAL -H ldapi:/// -f "$schema_file" 2>/dev/null && echo "  ✅ $schema_name loaded" || echo "  ⚠️  $schema_name failed"
-        fi
-    done
-fi
-
-# Configure replication
-if [ "$ENABLE_REPLICATION" = "true" ]; then
-    echo "🔄 Configuring multi-master replication..."
+# Cleanup function for proper signal handling
+cleanup() {
+    local signal=$1
+    log_info "Received signal $signal, initiating shutdown..."
     
-    # Set server ID
-    echo "🔹 Setting server ID: $SERVER_ID"
-    cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:///
-dn: cn=config
-changetype: modify
-replace: olcServerID
-olcServerID: $SERVER_ID
-EOF
-
-    # Load syncprov module
-    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=module{0},cn=config" -s base 2>/dev/null | grep -q "dn: cn=module{0},cn=config"; then
-        echo "🔹 Loading syncprov module..."
-        cat <<EOF | ldapadd -Y EXTERNAL -H ldapi:///
-dn: cn=module{0},cn=config
-objectClass: olcModuleList
-cn: module{0}
-olcModuleLoad: syncprov.la
-EOF
+    if [ -n "$SLAPD_PID" ] && kill -0 "$SLAPD_PID" 2>/dev/null; then
+        # Send SIGTERM to slapd
+        kill -TERM "$SLAPD_PID" 2>/dev/null || true
+        
+        # Wait for slapd to stop (with timeout)
+        local count=0
+        while kill -0 "$SLAPD_PID" 2>/dev/null && [ $count -lt 30 ]; do
+            sleep 1
+            count=$((count + 1))
+        done
+        
+        # Force kill if still running
+        if kill -0 "$SLAPD_PID" 2>/dev/null; then
+            log_warn "slapd did not stop gracefully, forcing..."
+            kill -KILL "$SLAPD_PID" 2>/dev/null || true
+        fi
+        
+        wait "$SLAPD_PID" 2>/dev/null || true
     fi
+    
+    log_info "Shutdown complete"
+    exit 0
+}
 
-    # Add syncprov overlay
-    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "olcDatabase={2}mdb,cn=config" 2>/dev/null | grep -q "olcOverlay={0}syncprov"; then
-        echo "🔹 Adding syncprov overlay..."
-        cat <<EOF | ldapadd -Y EXTERNAL -H ldapi:///
-dn: olcOverlay=syncprov,olcDatabase={2}mdb,cn=config
-objectClass: olcOverlayConfig
-objectClass: olcSyncProvConfig
-olcOverlay: syncprov
-EOF
+# Setup signal handlers
+trap 'cleanup SIGTERM' SIGTERM
+trap 'cleanup SIGINT' SIGINT
+
+# Main startup
+main() {
+    log_header "Starting OpenLDAP initialization"
+    
+    # Validate required environment
+    validate_required_env
+    
+    # Password strength warnings
+    warn_weak_password "$LDAP_ADMIN_PASSWORD" "LDAP_ADMIN_PASSWORD"
+    warn_weak_password "$LDAP_CONFIG_PASSWORD" "LDAP_CONFIG_PASSWORD"
+    
+    # Setup derived values
+    setup_derived_values
+    
+    # Log configuration
+    log_info "Domain: $LDAP_DOMAIN"
+    log_info "Base DN: $LDAP_BASE_DN"
+    log_info "Replication: $ENABLE_REPLICATION"
+    log_info "Monitoring: $ENABLE_MONITORING"
+    log_info "Server ID: $SERVER_ID"
+    
+    # Generate password hashes
+    local admin_hash=$(slappasswd -s "$LDAP_ADMIN_PASSWORD")
+    local config_hash=$(slappasswd -s "$LDAP_CONFIG_PASSWORD")
+    
+    # Prepare directories and log file
+    mkdir -p /logs
+    chown ldap:ldap /logs
+    touch /logs/slapd.log
+    chown ldap:ldap /logs/slapd.log
+    
+    # Start slapd in background for configuration
+    log_info "Starting slapd for initial configuration..."
+    # Check if slapd can start (capture errors)
+    if ! /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d 1 -Tt 2>&1; then
+        log_warn "slaptest indicates potential issues, but continuing..."
     fi
-
-    # Configure replication to peers
-    if [ -n "$REPLICATION_PEERS" ]; then
-        # Check if replication is already configured
-        if ldapsearch -Y EXTERNAL -H ldapi:/// -b "olcDatabase={2}mdb,cn=config" 2>/dev/null | grep -q "olcSyncrepl:"; then
-            echo "🔹 Replication peers already configured, skipping..."
-        else
-            echo "🔹 Configuring replication peers..."
-            
-            # Parse RIDs if provided, otherwise auto-generate
-            if [ -n "$REPLICATION_RIDS" ]; then
-                IFS=',' read -ra RIDS <<< "$REPLICATION_RIDS"
-            else
-                RIDS=()
+    /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d 256 &
+    SLAPD_PID=$!
+    
+    # Wait for slapd to be ready
+    if ! wait_for_slapd 30 1; then
+        log_error "slapd failed to start for configuration"
+        exit 1
+    fi
+    
+    # Validate configuration before proceeding
+    if ! validate_config; then
+        log_error "Configuration validation failed"
+        kill $SLAPD_PID 2>/dev/null || true
+        wait $SLAPD_PID 2>/dev/null || true
+        exit 1
+    fi
+    
+    # Configure database if not already configured
+    if is_database_configured "$LDAP_BASE_DN"; then
+        log_info "Database already configured"
+    else
+        log_header "Configuring OpenLDAP"
+        
+        set_config_password "$config_hash"
+        configure_database "$admin_hash"
+        set_database_acl
+        configure_indices
+        set_query_limits
+        set_timeouts
+        configure_monitor "$ENABLE_MONITORING"
+        set_log_level "$LDAP_LOG_LEVEL"
+        enable_db_monitoring
+        configure_tls
+        configure_memberof "$ENABLE_MEMBEROF"
+        configure_password_policy "$ENABLE_PASSWORD_POLICY"
+        configure_audit_log "$ENABLE_AUDIT_LOG"
+        
+        log_success "Database configuration complete"
+    fi
+    
+    # Create base domain if it doesn't exist
+    if is_base_domain_exists "$LDAP_BASE_DN" "$LDAP_ADMIN_DN" "$LDAP_ADMIN_PASSWORD"; then
+        log_info "Base domain already exists"
+    else
+        create_base_domain "$LDAP_ADMIN_PASSWORD"
+    fi
+    
+    # Load built-in schemas
+    if [ -n "$INCLUDE_SCHEMAS" ]; then
+        load_builtin_schemas "$INCLUDE_SCHEMAS"
+    fi
+    
+    # Load custom schemas
+    load_custom_schemas
+    
+    # Configure replication if enabled
+    if [ "$ENABLE_REPLICATION" = "true" ]; then
+        configure_replication "$SERVER_ID" "$LDAP_BASE_DN" "$LDAP_ADMIN_DN" "$LDAP_ADMIN_PASSWORD" "$REPLICATION_PEERS" "$REPLICATION_RIDS"
+    fi
+    
+    log_header "OpenLDAP initialization completed"
+    log_info "LDAP listening on ldap://0.0.0.0:${LDAP_PORT} ldaps://0.0.0.0:${LDAPS_PORT}"
+    log_info "Activity logs: /logs/slapd.log"
+    
+    # Stop the background slapd
+    log_info "Stopping temporary slapd..."
+    if kill -0 "$SLAPD_PID" 2>/dev/null; then
+        kill "$SLAPD_PID" 2>/dev/null || true
+        wait "$SLAPD_PID" 2>/dev/null || true
+    fi
+    SLAPD_PID=""
+    
+    # Setup log rotation
+    setup_logrotate
+    
+    # Start slapd in foreground
+    log_info "Starting slapd in foreground mode..."
+    
+    # Check if init scripts need to run
+    local has_init_scripts=false
+    if [ -d "/docker-entrypoint-initdb.d" ]; then
+        for script in /docker-entrypoint-initdb.d/*.sh; do
+            if [ -f "$script" ]; then
+                has_init_scripts=true
+                break
             fi
-            
-            RID_INDEX=0
-            RID=100
-            for peer in ${REPLICATION_PEERS//,/ }; do
-                # Use provided RID or auto-generate
-                if [ ${#RIDS[@]} -gt 0 ] && [ $RID_INDEX -lt ${#RIDS[@]} ]; then
-                    CURRENT_RID=${RIDS[$RID_INDEX]}
-                else
-                    RID=$((RID + 1))
-                    CURRENT_RID=$RID
-                fi
-                
-                echo "  Adding peer: $peer (RID: $CURRENT_RID)"
-                cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry"
-dn: olcDatabase={2}mdb,cn=config
-changetype: modify
-add: olcSyncRepl
-olcSyncRepl: rid=$CURRENT_RID provider=ldap://$peer:389 binddn="$LDAP_ADMIN_DN" bindmethod=simple credentials=$LDAP_ADMIN_PASSWORD searchbase="$LDAP_BASE_DN" type=refreshAndPersist retry="5 5 300 5" timeout=1
-EOF
-                RID_INDEX=$((RID_INDEX + 1))
-            done
-
-            # Enable mirror mode
-            echo "🔹 Enabling mirror mode..."
-            cat <<EOF | ldapmodify -Y EXTERNAL -H ldapi:///
-dn: olcDatabase={2}mdb,cn=config
-changetype: modify
-add: olcMirrorMode
-olcMirrorMode: TRUE
-EOF
-        fi
+        done
     fi
-
-    echo "✅ Replication configured"
-fi
-
-echo "🎉 OpenLDAP initialization completed"
-echo "📊 LDAP listening on ldap://0.0.0.0:389 ldaps://0.0.0.0:636"
-echo "📝 Activity logs: /logs/slapd.log"
-
-# Stop the background slapd quietly
-kill $SLAPD_PID 2>/dev/null
-wait $SLAPD_PID 2>/dev/null || true
-
-# Start slapd in foreground with init scripts in background
-/usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d stats >> /logs/slapd.log 2>&1 &
-SLAPD_FINAL_PID=$!
-
-# Wait for slapd to be ready
-sleep 3
-
-# Run init scripts if they exist
-if [ -d "/docker-entrypoint-initdb.d" ]; then
-    echo "🔧 Running initialization scripts..."
-    for script in /docker-entrypoint-initdb.d/*.sh; do
-        if [ -f "$script" ]; then
-            echo "  Executing $(basename $script)..."
-            bash "$script" || echo "  ⚠️  Script failed but continuing..."
+    
+    if [ "$has_init_scripts" = "false" ]; then
+        # No init scripts - start slapd and wait (logs go to file)
+        log_info "No init scripts found, starting slapd..."
+        /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d "$LDAP_LOG_LEVEL" >> /logs/slapd.log 2>&1 &
+        SLAPD_PID=$!
+        wait $SLAPD_PID
+    else
+        # Has init scripts - need background mode
+        /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d "$LDAP_LOG_LEVEL" >> /logs/slapd.log 2>&1 &
+        SLAPD_PID=$!
+        
+        # Verify slapd started successfully
+        sleep 2
+        if ! kill -0 "$SLAPD_PID" 2>/dev/null; then
+            log_error "slapd failed to start!"
+            exit 1
         fi
-    done
-fi
+        
+        # Wait for slapd to be ready for init scripts
+        if ! wait_for_slapd 30 1; then
+            log_error "slapd not ready for init scripts"
+            exit 1
+        fi
+        
+        # Run init scripts
+        log_header "Running initialization scripts..."
+        for script in /docker-entrypoint-initdb.d/*.sh; do
+            if [ -f "$script" ]; then
+                log_step "Executing $(basename "$script")..."
+                if bash "$script"; then
+                    log_success "Script completed: $(basename "$script")"
+                else
+                    log_warn "Script failed but continuing: $(basename "$script")"
+                fi
+            fi
+        done
+        
+        log_success "All initialization scripts completed"
+        
+        # Keep slapd running with proper signal handling
+        wait $SLAPD_PID
+    fi
+}
 
-# Keep slapd running
-wait $SLAPD_FINAL_PID
+# Setup log rotation (skipped for read-only rootfs - handle externally)
+setup_logrotate() {
+    # Log rotation is handled outside the container when using read-only rootfs
+    # For writable containers, you can mount a custom logrotate config
+    if [ -w /etc/logrotate.d ]; then
+        log_step "Setting up log rotation..."
+        
+        cat > /etc/logrotate.d/slapd << 'EOF'
+/logs/slapd.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    sharedscripts
+    postrotate
+        /bin/kill -HUP $(cat /var/run/openldap/slapd.pid 2>/dev/null) 2>/dev/null || true
+    endscript
+}
+EOF
+        log_success "Log rotation configured"
+    else
+        log_info "Read-only rootfs detected - skipping logrotate setup (handle externally)"
+    fi
+}
+
+# Run main function
+main "$@"

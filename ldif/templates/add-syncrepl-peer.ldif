@@ -1,0 +1,6 @@
+# Add replication peer
+# Variables: RID, PEER, LDAP_ADMIN_DN, LDAP_ADMIN_PASSWORD, LDAP_BASE_DN
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+add: olcSyncRepl
+olcSyncRepl: rid={{RID}} provider=ldap://{{PEER}}:389 binddn="{{LDAP_ADMIN_DN}}" bindmethod=simple credentials={{LDAP_ADMIN_PASSWORD}} searchbase="{{LDAP_BASE_DN}}" type=refreshAndPersist retry="5 5 300 5" timeout=1

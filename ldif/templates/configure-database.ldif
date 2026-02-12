@@ -1,0 +1,12 @@
+# Configure main database
+# Variables: LDAP_BASE_DN, LDAP_ADMIN_DN, ADMIN_HASH
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: {{LDAP_BASE_DN}}
+-
+replace: olcRootDN
+olcRootDN: {{LDAP_ADMIN_DN}}
+-
+add: olcRootPW
+olcRootPW: {{ADMIN_HASH}}

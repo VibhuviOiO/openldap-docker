@@ -1,0 +1,9 @@
+# Add password policy overlay
+dn: olcOverlay=ppolicy,olcDatabase={2}mdb,cn=config
+objectClass: olcOverlayConfig
+objectClass: olcPPolicyConfig
+olcOverlay: ppolicy
+olcPPolicyDefault: cn=default,ou=Policies,{{LDAP_BASE_DN}}
+olcPPolicyHashCleartext: TRUE
+olcPPolicyUseLockout: TRUE
+olcPPolicyForwardUpdates: FALSE

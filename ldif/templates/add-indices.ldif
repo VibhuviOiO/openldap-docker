@@ -1,0 +1,27 @@
+# Add database indices for performance
+# Common indices for user lookups
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+add: olcDbIndex
+olcDbIndex: objectClass eq
+-
+add: olcDbIndex
+olcDbIndex: cn pres,eq,sub
+-
+add: olcDbIndex
+olcDbIndex: uid pres,eq
+-
+add: olcDbIndex
+olcDbIndex: mail pres,eq,sub
+-
+add: olcDbIndex
+olcDbIndex: sn pres,eq,sub
+-
+add: olcDbIndex
+olcDbIndex: givenName pres,eq,sub
+-
+add: olcDbIndex
+olcDbIndex: member eq
+-
+add: olcDbIndex
+olcDbIndex: memberOf eq

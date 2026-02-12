@@ -1,0 +1,161 @@
+name: Validate
+
+# Trigger on Pull Request - blocks merge if validation fails
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'Dockerfile'
+      - 'startup.sh'
+      - 'scripts/**'
+      - 'ldif/**'
+
+jobs:
+  # 1. Lint Dockerfile
+  lint-dockerfile:
+    name: Lint Dockerfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./Dockerfile
+          verbose: true
+          failure-threshold: warning
+
+  # 2. Lint Shell Scripts
+  lint-scripts:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './scripts'
+          format: gcc
+        env:
+          SHELLCHECK_OPTS: -e SC1091
+
+  # 3. Build and Test Container
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    needs: [lint-dockerfile, lint-scripts]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: openldap:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Start container
+        run: |
+          docker run -d \
+            --name openldap-test \
+            -e LDAP_DOMAIN=test.com \
+            -e LDAP_ADMIN_PASSWORD=testpass \
+            -e ENABLE_MEMBEROF=true \
+            -p 389:389 \
+            openldap:test
+          
+          # Wait for startup (with timeout)
+          echo "Waiting for LDAP to start..."
+          for i in {1..60}; do
+            if docker exec openldap-test /usr/local/bin/scripts/healthcheck.sh basic 2>/dev/null | grep -q "OK"; then
+              echo "✅ LDAP is ready"
+              break
+            fi
+            echo "Attempt $i/60..."
+            sleep 2
+          done
+      
+      - name: Test health check
+        run: |
+          docker exec openldap-test /usr/local/bin/scripts/healthcheck.sh basic
+      
+      - name: Test LDAP connection
+        run: |
+          docker exec openldap-test ldapsearch \
+            -x -H ldap://localhost:389 \
+            -D "cn=Manager,dc=test,dc=com" \
+            -w testpass \
+            -b "dc=test,dc=com" \
+            -s base
+      
+      - name: Test overlay configuration
+        run: |
+          # Check if memberOf overlay is configured
+          docker exec openldap-test ldapsearch \
+            -Y EXTERNAL -H ldapi:/// \
+            -b "cn=config" \
+            "(olcOverlay=memberof)" \
+            2>/dev/null | grep -q "olcOverlay" && echo "✅ memberOf configured"
+      
+      - name: Check logs on failure
+        if: failure()
+        run: docker logs openldap-test
+      
+      - name: Cleanup
+        if: always()
+        run: docker rm -f openldap-test
+
+  # 4. Security Scan
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build image
+        run: docker build -t openldap:scan .
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'openldap:scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'  # Fail on CRITICAL/HIGH
+      
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # 5. Check Image Size
+  check-size:
+    name: Check Image Size
+    runs-on: ubuntu-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build image
+        run: docker build -t openldap:size-check .
+      
+      - name: Check size
+        run: |
+          SIZE=$(docker images openldap:size-check --format "{{.Size}}")
+          echo "Image size: $SIZE"
+          
+          # Fail if over 500MB
+          if echo "$SIZE" | grep -qE "^[0-9.]+GB"; then
+            echo "❌ Image size too large (over 1GB)"
+            exit 1
+          fi
+          echo "✅ Size OK"
