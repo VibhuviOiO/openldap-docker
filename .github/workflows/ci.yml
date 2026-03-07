@@ -45,7 +45,7 @@ jobs:
       - name: Test LDAP bind
         run: |
           docker exec ldap-test ldapsearch -x -H ldap://localhost \
-            -D "cn=admin,dc=test,dc=local" -w testpass \
+            -D "cn=Manager,dc=test,dc=local" -w testpass \
             -b "dc=test,dc=local" -s base "(objectClass=*)" dn
 
       - name: Test health check
