@@ -16,6 +16,9 @@ fix_permissions() {
     fi
 }
 
+# Fix permissions first (must run before sourcing scripts that use /tmp/ldap-init)
+fix_permissions
+
 # Source helper scripts
 SCRIPT_DIR="/usr/local/bin/scripts"
 source "$SCRIPT_DIR/utils.sh"
@@ -23,9 +26,6 @@ source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/schema.sh"
 source "$SCRIPT_DIR/replication.sh"
 source "$SCRIPT_DIR/ldif-processor.sh"
-
-# Fix permissions (must run before anything else)
-fix_permissions
 
 # Default values
 : "${LDAP_LOG_LEVEL:=256}"
