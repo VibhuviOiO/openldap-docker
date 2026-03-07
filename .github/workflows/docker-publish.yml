@@ -97,7 +97,7 @@ jobs:
 
       # --- Supply Chain: SBOM attestation ---
       - name: Generate SBOM with Syft
-        uses: anchore/sbom-action@f325610c9f50a54015d47359f9f3e49d8b08a384 # v0.18.0
+        uses: anchore/sbom-action@v0.18.0
         with:
           image: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}:latest
           format: spdx-json
