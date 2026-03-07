@@ -9,7 +9,7 @@ BASE_DN="dc=vibhuvioio,dc=com"
 # Secure credential file (avoid password in ps output)
 CREDS_FILE=$(mktemp /tmp/ldap_creds.XXXXXX)
 chmod 600 "$CREDS_FILE"
-echo "$ADMIN_PW" > "$CREDS_FILE"
+printf '%s' "$ADMIN_PW" > "$CREDS_FILE"
 trap 'rm -f "$CREDS_FILE"' EXIT
 
 # Wait for LDAP to be ready with proper credentials

@@ -306,16 +306,16 @@ configure_tls() {
     
     log_step "Configuring TLS..."
     
-    # Set proper permissions
-    chown ldap:ldap "$cert_file" "$key_file"
-    chmod 644 "$cert_file"
-    chmod 600 "$key_file"
+    # Set proper permissions (ignore errors for read-only mounts)
+    chown ldap:ldap "$cert_file" "$key_file" 2>/dev/null || true
+    chmod 644 "$cert_file" 2>/dev/null || true
+    chmod 600 "$key_file" 2>/dev/null || true
     
     # Prepare CA entry if provided
     local ca_entry=""
     if [ -n "$ca_file" ] && [ -f "$ca_file" ]; then
-        chown ldap:ldap "$ca_file"
-        chmod 644 "$ca_file"
+        chown ldap:ldap "$ca_file" 2>/dev/null || true
+        chmod 644 "$ca_file" 2>/dev/null || true
         ca_entry="-\nadd: olcTLSCACertificateFile\nolcTLSCACertificateFile: ${ca_file}"
     fi
     

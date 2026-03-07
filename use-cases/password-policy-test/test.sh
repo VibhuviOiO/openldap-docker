@@ -38,20 +38,20 @@ cd "$(dirname "$0")"
 LDAP_IMAGE="$IMAGE" docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" up -d
 
 # Wait for initialization
-echo "→ Waiting for OpenLDAP to initialize (20s)..."
-sleep 20
+echo "→ Waiting for OpenLDAP to initialize (75s)..."
+sleep 75
 
 # Get actual container name
 ACTUAL_CONTAINER=$(docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" ps -q | head -1)
 
 # Check container is running
-if ! docker ps | grep -q "$ACTUAL_CONTAINER"; then
+if ! docker ps --no-trunc | grep -q "$ACTUAL_CONTAINER"; then
     echo -e "${RED}✗ Container not running${NC}"
     docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" logs --tail=30
     exit 1
 fi
 
-BASE_DN="dc=example,dc=com"
+BASE_DN="dc=test,dc=com"
 
 echo ""
 echo "→ Test 1: Verify base domain accessible..."
@@ -79,8 +79,8 @@ echo ""
 echo "→ Test 3: Create test user..."
 docker exec -i "$ACTUAL_CONTAINER" ldapadd -x \
     -D "cn=Manager,$BASE_DN" \
-    -w "admin" 2>/dev/null << 'LDIF' || true
-dn: uid=ppolicytest,dc=example,dc=com
+    -w "admin123" 2>/dev/null << LDIF || true
+dn: uid=ppolicytest,$BASE_DN
 objectClass: inetOrgPerson
 uid: ppolicytest
 cn: Password Policy Test
@@ -93,6 +93,7 @@ sleep 2
 echo ""
 echo "→ Test 4: Verify user created..."
 if docker exec "$ACTUAL_CONTAINER" ldapsearch -x \
+    -D "cn=Manager,$BASE_DN" -w "admin123" \
     -b "uid=ppolicytest,$BASE_DN" \
     -s base 2>&1 | grep -q "cn: Password Policy Test"; then
     echo -e "${GREEN}✓ Test user created${NC}"

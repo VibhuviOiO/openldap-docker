@@ -35,14 +35,14 @@ cd "$(dirname "$0")"
 LDAP_IMAGE="$IMAGE" docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" up -d
 
 # Wait for initialization
-echo "→ Waiting for OpenLDAP to initialize (15s)..."
-sleep 15
+echo "→ Waiting for OpenLDAP to initialize (75s)..."
+sleep 75
 
 # Get actual container name
 ACTUAL_CONTAINER=$(docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" ps -q | head -1)
 
 # Check container is running
-if ! docker ps | grep -q "$ACTUAL_CONTAINER"; then
+if ! docker ps --no-trunc | grep -q "$ACTUAL_CONTAINER"; then
     echo -e "${RED}✗ Container not running${NC}"
     docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" logs --tail=30
     exit 1
@@ -54,12 +54,8 @@ BASE_DN="dc=example,dc=com"
 
 echo ""
 echo "→ Test 1: StartTLS (LDAP with TLS upgrade)"
-if docker exec "$ACTUAL_CONTAINER" ldapsearch -x \
-    -H ldap://localhost:389 -ZZ \
-    -D "$ADMIN_DN" \
-    -w "$ADMIN_PASS" \
-    -b "$BASE_DN" \
-    -s base 2>&1 | grep -q "dn:"; then
+# Use LDAPTLS_REQCERT=never to allow self-signed certificates in test
+if docker exec "$ACTUAL_CONTAINER" bash -c "LDAPTLS_REQCERT=never ldapsearch -x -H ldap://localhost:389 -ZZ -D '$ADMIN_DN' -w '$ADMIN_PASS' -b '$BASE_DN' -s base" 2>&1 | grep -q "dn:"; then
     echo -e "${GREEN}✓ StartTLS connection successful${NC}"
 else
     echo -e "${RED}✗ StartTLS connection failed${NC}"
@@ -68,12 +64,7 @@ fi
 
 echo ""
 echo "→ Test 2: LDAPS (Direct SSL on port 636)"
-if LDAPTLS_REQCERT=never docker exec "$ACTUAL_CONTAINER" ldapsearch -x \
-    -H ldaps://localhost:636 \
-    -D "$ADMIN_DN" \
-    -w "$ADMIN_PASS" \
-    -b "$BASE_DN" \
-    -s base 2>&1 | grep -q "dn:"; then
+if docker exec "$ACTUAL_CONTAINER" bash -c "LDAPTLS_REQCERT=never ldapsearch -x -H ldaps://localhost:636 -D '$ADMIN_DN' -w '$ADMIN_PASS' -b '$BASE_DN' -s base" 2>&1 | grep -q "dn:"; then
     echo -e "${GREEN}✓ LDAPS connection successful${NC}"
 else
     echo -e "${RED}✗ LDAPS connection failed${NC}"

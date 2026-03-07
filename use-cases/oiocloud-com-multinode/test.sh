@@ -39,8 +39,8 @@ cd "$(dirname "$0")"
 LDAP_IMAGE="$IMAGE" docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" up -d
 
 # Wait for cluster initialization (longer for replication setup)
-echo "→ Waiting for cluster to initialize (40s)..."
-sleep 40
+echo "→ Waiting for cluster to initialize (90s)..."
+sleep 90
 
 BASE_DN="dc=oiocloud,dc=com"
 ADMIN_DN="cn=Manager,$BASE_DN"

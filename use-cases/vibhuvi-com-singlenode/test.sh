@@ -38,14 +38,14 @@ cd "$(dirname "$0")"
 LDAP_IMAGE="$IMAGE" docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" up -d
 
 # Wait for initialization (longer for schema load + data import)
-echo "→ Waiting for OpenLDAP to initialize (20s)..."
-sleep 20
+echo "→ Waiting for OpenLDAP to initialize (75s)..."
+sleep 75
 
 # Get actual container name
 ACTUAL_CONTAINER=$(docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" ps -q | head -1)
 
 # Check container is running
-if ! docker ps | grep -q "$ACTUAL_CONTAINER"; then
+if ! docker ps --no-trunc | grep -q "$ACTUAL_CONTAINER"; then
     echo -e "${RED}✗ Container not running${NC}"
     docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" logs --tail=30
     exit 1
