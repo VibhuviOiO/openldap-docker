@@ -1,6 +1,6 @@
 services:
   openldap-node1:
-    image: ghcr.io/vibhuvioio/openldap:latest
+    image: openldap:local
     container_name: openldap-oiocloud-node1
     hostname: openldap-oiocloud-node1
     env_file:
@@ -22,6 +22,8 @@ services:
     cap_drop:
       - ALL
     cap_add:
+      - DAC_READ_SEARCH
+      - DAC_OVERRIDE
       - NET_BIND_SERVICE
       - SETUID
       - SETGID
@@ -52,7 +54,7 @@ services:
       - ldap-shared-network
 
   openldap-node2:
-    image: ghcr.io/vibhuvioio/openldap:latest
+    image: openldap:local
     container_name: openldap-oiocloud-node2
     hostname: openldap-oiocloud-node2
     env_file:
@@ -72,6 +74,8 @@ services:
     cap_drop:
       - ALL
     cap_add:
+      - DAC_READ_SEARCH
+      - DAC_OVERRIDE
       - NET_BIND_SERVICE
       - SETUID
       - SETGID
@@ -104,7 +108,7 @@ services:
       - openldap-node1
 
   openldap-node3:
-    image: ghcr.io/vibhuvioio/openldap:latest
+    image: openldap:local
     container_name: openldap-oiocloud-node3
     hostname: openldap-oiocloud-node3
     env_file:
@@ -124,6 +128,8 @@ services:
     cap_drop:
       - ALL
     cap_add:
+      - DAC_READ_SEARCH
+      - DAC_OVERRIDE
       - NET_BIND_SERVICE
       - SETUID
       - SETGID

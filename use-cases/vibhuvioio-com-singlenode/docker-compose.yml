@@ -1,6 +1,6 @@
 services:
   openldap:
-    image: ghcr.io/vibhuvioio/openldap:latest
+    image: openldap:local
     container_name: openldap-vibhuvioio
     hostname: openldap-vibhuvioio
     env_file:
@@ -21,6 +21,8 @@ services:
     cap_drop:
       - ALL
     cap_add:
+      - DAC_READ_SEARCH
+      - DAC_OVERRIDE
       - NET_BIND_SERVICE
       - SETUID
       - SETGID

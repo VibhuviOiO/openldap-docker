@@ -1,6 +1,6 @@
 services:
   openldap:
-    image: ghcr.io/vibhuvioio/openldap:latest
+    image: openldap:local
     container_name: openldap-secrets
     hostname: openldap-secrets
     environment:
@@ -31,6 +31,8 @@ services:
       - SETUID
       - SETGID
       - CHOWN
+      - DAC_READ_SEARCH
+      - DAC_OVERRIDE
     
     # Grace period for clean shutdown
     stop_grace_period: 30s

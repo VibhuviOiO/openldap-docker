@@ -36,10 +36,8 @@ process_ldif_template() {
         var_name=$(echo "$var_assignment" | cut -d'=' -f1)
         var_value=$(echo "$var_assignment" | cut -d'=' -f2-)
         
-        # Escape special characters for sed
-        var_value=$(echo "$var_value" | sed 's/[&/\]/\\&/g')
-        
         # Replace placeholder using bash string replacement
+        # Note: No need to escape special characters for bash replacement
         content="${content//\{\{$var_name\}\}/$var_value}"
     done
     

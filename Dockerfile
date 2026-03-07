@@ -19,6 +19,7 @@ RUN dnf install -y dnf-plugins-core epel-release && \
     && rm -rf /var/cache/dnf/*
 
 # Create directories with proper permissions
+# Note: /tmp/ldap-init stays owned by root for no-new-privileges support
 RUN mkdir -p \
         /var/lib/ldap \
         /etc/openldap/slapd.d \
@@ -30,14 +31,16 @@ RUN mkdir -p \
         /usr/local/bin/ldif/templates \
         /usr/local/bin/ldif/generated \
         /tmp/ldap-init \
+        /tmp/ldap-init/ldif \
     && chown -R ldap:ldap \
         /var/lib/ldap \
         /etc/openldap/slapd.d \
         /var/run/openldap \
         /usr/local/bin/ldif/generated \
-        /tmp/ldap-init \
-    && chmod 750 /var/lib/ldap /etc/openldap/slapd.d \
-    && chmod 755 /usr/local/bin/ldif/templates /usr/local/bin/ldif/generated /tmp/ldap-init
+        /tmp/ldap-init/ldif \
+    && chmod 750 /var/lib/ldap \
+    && chmod 755 /etc/openldap/slapd.d \
+    && chmod 755 /usr/local/bin/ldif/templates /usr/local/bin/ldif/generated /tmp/ldap-init /tmp/ldap-init/ldif
 
 # Copy LDIF templates (read-only, owned by root)
 COPY --chown=root:root --chmod=644 ldif/templates/*.ldif /usr/local/bin/ldif/templates/
