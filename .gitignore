@@ -11,6 +11,7 @@
 dev-tools/
 logs/
 audit-logs/
+.local-test/
 *.log
 
 # Docker (development only)
@@ -39,6 +40,10 @@ backups/
 .env.*
 !.env.example
 !use-cases/**/.env*
+
+# Local testing directory
+.local-test/
+tests/local/logs/
 
 # Build artifacts
 *.tar.gz
