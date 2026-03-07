@@ -8,6 +8,9 @@ services:
       - LDAP_ADMIN_PASSWORD=AdminPass123!
       - LDAP_ORGANIZATION=Overlay Test Organization
       
+      # Schemas required for testing
+      - INCLUDE_SCHEMAS=cosine,inetorgperson,nis
+      
       # Enable all overlays for testing
       - ENABLE_MEMBEROF=true
       - ENABLE_PASSWORD_POLICY=true
