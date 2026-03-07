@@ -1,6 +1,6 @@
 services:
   openldap:
-    image: openldap:local
+    image: ${LDAP_IMAGE:-openldap:local}
     container_name: openldap-tls
     hostname: openldap-tls
     environment:

@@ -35,8 +35,8 @@ cd "$(dirname "$0")"
 LDAP_IMAGE="$IMAGE" docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" up -d
 
 # Wait for initialization
-echo "→ Waiting for OpenLDAP to initialize (75s)..."
-sleep 75
+echo "→ Waiting for OpenLDAP to initialize (90s)..."
+sleep 90
 
 # Get actual container name
 ACTUAL_CONTAINER=$(docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" ps -q | head -1)
