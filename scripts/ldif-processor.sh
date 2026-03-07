@@ -1,4 +1,6 @@
 #!/bin/bash
+set -eo pipefail
+
 # LDIF template processor
 # Replaces placeholders in template files with actual values
 

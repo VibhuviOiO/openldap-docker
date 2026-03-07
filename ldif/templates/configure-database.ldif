@@ -10,3 +10,6 @@ olcRootDN: {{LDAP_ADMIN_DN}}
 -
 add: olcRootPW
 olcRootPW: {{ADMIN_HASH}}
+-
+replace: olcDbMaxSize
+olcDbMaxSize: 1073741824

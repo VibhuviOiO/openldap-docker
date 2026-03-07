@@ -1,0 +1,71 @@
+services:
+  openldap:
+    image: ghcr.io/vibhuvioio/openldap:latest
+    container_name: openldap-secrets
+    hostname: openldap-secrets
+    environment:
+      # Use _FILE variants to read passwords from Docker secrets
+      - LDAP_DOMAIN=example.com
+      - LDAP_ADMIN_PASSWORD_FILE=/run/secrets/ldap_admin_password
+      - LDAP_CONFIG_PASSWORD_FILE=/run/secrets/ldap_config_password
+      - LDAP_ORGANIZATION=Example Organization (Docker Secrets)
+      
+      # Optional features
+      - ENABLE_MONITORING=true
+      - ENABLE_MEMBEROF=false
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/openldap/slapd.d
+      - ./logs:/logs
+    
+    # Security: Drop all capabilities and add only required ones
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+    
+    # Grace period for clean shutdown
+    stop_grace_period: 30s
+    
+    # Docker secrets - passwords are mounted as files, not env vars
+    secrets:
+      - ldap_admin_password
+      - ldap_config_password
+    
+    restart: unless-stopped
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+    
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  ldap-data:
+  ldap-config:
+
+# Docker secrets definition
+# Secrets are read from files on the host at startup
+secrets:
+  ldap_admin_password:
+    file: ./secrets/admin_password.txt
+  ldap_config_password:
+    file: ./secrets/config_password.txt

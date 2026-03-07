@@ -1,4 +1,6 @@
 #!/bin/bash
+set -eo pipefail
+
 # OpenLDAP configuration functions
 
 source /usr/local/bin/scripts/utils.sh
@@ -178,6 +180,22 @@ set_timeouts() {
     log_success "Connection timeouts configured"
 }
 
+# Set connection rate limits (DoS protection)
+set_connection_limits() {
+    local max_pending=${1:-100}
+    local max_pending_auth=${2:-1000}
+    
+    log_step "Setting connection limits (max_pending=${max_pending}, max_pending_auth=${max_pending_auth})..."
+    
+    local ldif_file=$(process_ldif_template "set-connection-limits" \
+        "CONN_MAX_PENDING=${max_pending}" \
+        "CONN_MAX_PENDING_AUTH=${max_pending_auth}")
+    
+    cat "$ldif_file" | ldap_retry 5 2 ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry" || true
+    
+    log_success "Connection limits configured"
+}
+
 # Configure audit logging (auditlog overlay)
 configure_audit_log() {
     local enabled=$1
@@ -229,7 +247,16 @@ configure_password_policy() {
         log_step "Loading ppolicy module..."
         local module_ldif=$(get_ldif_path "add-password-policy")
         cp "$LDIF_TEMPLATE_DIR/add-password-policy.ldif" "$module_ldif"
-        cat "$module_ldif" | ldap_retry 5 2 ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry" || true
+        
+        # Check if module{0} entry exists (created by another module loader)
+        if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=module{0},cn=config" -s base 2>/dev/null | grep -q "dn: cn=module{0},cn=config"; then
+            # Entry exists, modify it to add ppolicy
+            cat "$module_ldif" | sed 's/^objectClass: olcModuleList/changetype: modify\nadd: olcModuleLoad/' | sed '/^cn: module{0}$/d' | \
+                ldap_retry 5 2 ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry" || true
+        else
+            # Entry doesn't exist, create it
+            cat "$module_ldif" | ldap_retry 5 2 ldapadd -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "adding new entry" || true
+        fi
     fi
     
     # Add ppolicy overlay
@@ -241,12 +268,15 @@ configure_password_policy() {
     fi
     
     # Create default policy
-    if ! ldapsearch -x -H ldap://localhost:389 -b "cn=default,ou=Policies,${LDAP_BASE_DN}" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" 2>/dev/null | grep -q "dn:"; then
+    local creds_file
+    creds_file=$(create_creds_file "$LDAP_ADMIN_PASSWORD")
+    if ! ldapsearch -x -H ldap://localhost:389 -b "cn=default,ou=Policies,${LDAP_BASE_DN}" -D "$LDAP_ADMIN_DN" -y "$creds_file" 2>/dev/null | grep -q "dn:"; then
         log_step "Creating default password policy..."
         local policy_ldif=$(process_ldif_template "create-default-policy" \
             "LDAP_BASE_DN=${LDAP_BASE_DN}")
-        cat "$policy_ldif" | ldap_retry 5 2 ldapadd -x -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" 2>&1 | grep -v "adding new entry" || true
+        cat "$policy_ldif" | ldap_retry 5 2 ldapadd -x -D "$LDAP_ADMIN_DN" -y "$creds_file" 2>&1 | grep -v "adding new entry" || true
     fi
+    remove_creds_file "$creds_file"
     
     log_success "Password policy configured"
 }
@@ -317,7 +347,10 @@ create_base_domain() {
         "DC_PARTS_0=${DC_PARTS[0]}" \
         "LDAP_ADMIN_DN=${LDAP_ADMIN_DN}")
     
-    cat "$ldif_file" | ldap_retry 5 2 ldapadd -x -D "$LDAP_ADMIN_DN" -w "$admin_password" 2>&1 | grep -v "adding new entry" || true
+    local creds_file
+    creds_file=$(create_creds_file "$admin_password")
+    cat "$ldif_file" | ldap_retry 5 2 ldapadd -x -D "$LDAP_ADMIN_DN" -y "$creds_file" 2>&1 | grep -v "adding new entry" || true
+    remove_creds_file "$creds_file"
     
     log_success "Base domain created"
 }
@@ -338,8 +371,12 @@ is_base_domain_exists() {
     local admin_dn=$2
     local admin_password=$3
     
-    if ldapsearch -x -H ldap://localhost:389 -b "$base_dn" -D "$admin_dn" -w "$admin_password" -s base "(objectClass=*)" >/dev/null 2>&1; then
-        return 0
+    local creds_file
+    creds_file=$(create_creds_file "$admin_password")
+    local rc=1
+    if ldapsearch -x -H ldap://localhost:389 -b "$base_dn" -D "$admin_dn" -y "$creds_file" -s base "(objectClass=*)" >/dev/null 2>&1; then
+        rc=0
     fi
-    return 1
+    remove_creds_file "$creds_file"
+    return $rc
 }

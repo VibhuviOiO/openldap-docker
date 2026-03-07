@@ -1,0 +1,614 @@
+name: Integration Tests
+
+# Trigger on Pull Requests to main or develop branches
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'Dockerfile'
+      - 'startup.sh'
+      - 'scripts/**'
+      - 'ldif/**'
+      - '.github/workflows/integration-test.yml'
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+env:
+  TEST_IMAGE: openldap:integration-test
+  TEST_DOMAIN: test.example.com
+  TEST_ADMIN_PASSWORD: TestAdminPass123!
+
+jobs:
+  # Build base image once, use in all tests
+  build:
+    name: Build Test Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ env.TEST_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Save image to file
+        run: |
+          docker save ${{ env.TEST_IMAGE }} -o openldap-image.tar
+          ls -lh openldap-image.tar
+      
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openldap-image
+          path: openldap-image.tar
+          retention-days: 1
+
+  # Test 1: Basic functionality and ACLs
+  test-basic-acl:
+    name: Test Basic + ACL
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openldap-image
+      
+      - name: Load image
+        run: docker load -i openldap-image.tar
+      
+      - name: Start OpenLDAP
+        run: |
+          docker run -d \
+            --name openldap-basic \
+            -e LDAP_DOMAIN=${{ env.TEST_DOMAIN }} \
+            -e LDAP_ADMIN_PASSWORD=${{ env.TEST_ADMIN_PASSWORD }} \
+            -e ENABLE_MONITORING=true \
+            -p 389:389 \
+            ${{ env.TEST_IMAGE }}
+          
+          # Wait for LDAP to be ready
+          echo "Waiting for LDAP to start..."
+          for i in {1..60}; do
+            if docker exec openldap-basic ldapsearch -x -H ldap://localhost:389 -b "" -s base 2>/dev/null | grep -q "OpenLDAProotDSE"; then
+              echo "✅ LDAP is ready (attempt $i)"
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "❌ LDAP failed to start"
+              docker logs openldap-basic
+              exit 1
+            fi
+            sleep 2
+          done
+      
+      - name: Test basic connectivity
+        run: |
+          echo "Testing basic connectivity..."
+          docker exec openldap-basic /usr/local/bin/scripts/test-basic.sh localhost 389
+          echo "✅ Basic connectivity passed"
+      
+      - name: Test ACL enforcement
+        run: |
+          echo "Testing ACL enforcement..."
+          docker exec openldap-basic /usr/local/bin/scripts/test-acl.sh
+          echo "✅ ACL enforcement passed"
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f openldap-basic || true
+          docker rmi ${{ env.TEST_IMAGE }} || true
+
+  # Test 2: Overlay features (memberOf, ppolicy, auditlog)
+  test-overlays:
+    name: Test Overlays (memberOf, ppolicy, auditlog)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openldap-image
+      
+      - name: Load image
+        run: docker load -i openldap-image.tar
+      
+      - name: Start OpenLDAP with overlays
+        run: |
+          docker run -d \
+            --name openldap-overlays \
+            -e LDAP_DOMAIN=${{ env.TEST_DOMAIN }} \
+            -e LDAP_ADMIN_PASSWORD=${{ env.TEST_ADMIN_PASSWORD }} \
+            -e ENABLE_MEMBEROF=true \
+            -e ENABLE_PASSWORD_POLICY=true \
+            -e ENABLE_AUDIT_LOG=true \
+            -e ENABLE_MONITORING=true \
+            -p 389:389 \
+            -v $(pwd)/test-audit.log:/logs/audit.log \
+            ${{ env.TEST_IMAGE }}
+          
+          # Wait for LDAP
+          echo "Waiting for LDAP..."
+          for i in {1..60}; do
+            if docker exec openldap-overlays ldapsearch -x -H ldap://localhost:389 -b "" -s base 2>/dev/null | grep -q "OpenLDAProotDSE"; then
+              echo "✅ LDAP is ready"
+              sleep 5  # Extra time for overlays
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "❌ LDAP failed to start"
+              docker logs openldap-overlays
+              exit 1
+            fi
+            sleep 2
+          done
+      
+      - name: Test memberOf overlay
+        run: |
+          echo "=== Testing memberOf overlay ==="
+          
+          # Create test users and groups
+          docker exec openldap-overlays ldapadd -x \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" << 'LDAPADD'
+          dn: ou=TestUsers,${{ env.TEST_DOMAIN }}
+          objectClass: organizationalUnit
+          ou: TestUsers
+          
+          dn: uid=testuser,ou=TestUsers,${{ env.TEST_DOMAIN }}
+          objectClass: inetOrgPerson
+          objectClass: posixAccount
+          uid: testuser
+          cn: Test User
+          sn: User
+          uidNumber: 10001
+          gidNumber: 10000
+          homeDirectory: /home/testuser
+          userPassword: TestPass123!
+          
+          dn: cn=testgroup,ou=TestUsers,${{ env.TEST_DOMAIN }}
+          objectClass: groupOfNames
+          cn: testgroup
+          member: uid=testuser,ou=TestUsers,${{ env.TEST_DOMAIN }}
+          LDAPADD
+          
+          # Verify memberOf attribute
+          if docker exec openldap-overlays ldapsearch -x \
+            -H ldap://localhost:389 \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" \
+            -b "uid=testuser,ou=TestUsers,${{ env.TEST_DOMAIN }}" \
+            "(objectClass=*)" memberOf | grep -q "memberOf: cn=testgroup"; then
+            echo "✅ memberOf overlay working"
+          else
+            echo "❌ memberOf overlay failed"
+            docker exec openldap-overlays ldapsearch -x \
+              -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+              -w "${{ env.TEST_ADMIN_PASSWORD }}" \
+              -b "uid=testuser,ou=TestUsers,${{ env.TEST_DOMAIN }}" \
+              "(objectClass=*)"
+            exit 1
+          fi
+      
+      - name: Test password policy overlay
+        run: |
+          echo "=== Testing password policy overlay ==="
+          
+          # Try weak password (should fail)
+          echo "Testing weak password rejection..."
+          if docker exec openldap-overlays ldapmodify -x \
+            -H ldap://localhost:389 \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" 2>&1 << 'LDAPMOD' | grep -qE "(Password fails quality checking|Constraint violation)"
+          dn: uid=testuser,ou=TestUsers,${{ env.TEST_DOMAIN }}
+          changetype: modify
+          replace: userPassword
+          userPassword: 123
+          LDAPMOD
+            echo "✅ Weak password correctly rejected"
+          else
+            echo "❌ Weak password was accepted (policy not working)"
+            exit 1
+          fi
+          
+          # Try strong password (should succeed)
+          echo "Testing strong password acceptance..."
+          if docker exec openldap-overlays ldapmodify -x \
+            -H ldap://localhost:389 \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" 2>&1 << 'LDAPMOD' | grep -q "modifying entry"
+          dn: uid=testuser,ou=TestUsers,${{ env.TEST_DOMAIN }}
+          changetype: modify
+          replace: userPassword
+          userPassword: StrongPass789!
+          LDAPMOD
+            echo "✅ Strong password accepted"
+          else
+            echo "❌ Strong password was rejected"
+            exit 1
+          fi
+      
+      - name: Test audit log
+        run: |
+          echo "=== Testing audit log ==="
+          sleep 2
+          
+          if docker exec openldap-overlays test -f /logs/audit.log; then
+            echo "✅ Audit log file exists"
+            echo "Audit log contents:"
+            docker exec openldap-overlays cat /logs/audit.log | head -20
+          else
+            echo "❌ Audit log file not found"
+            docker exec openldap-overlays ls -la /logs/
+            exit 1
+          fi
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f openldap-overlays || true
+          docker rmi ${{ env.TEST_IMAGE }} || true
+
+  # Test 3: TLS/SSL connectivity
+  test-tls:
+    name: Test TLS/SSL
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openldap-image
+      
+      - name: Load image
+        run: docker load -i openldap-image.tar
+      
+      - name: Generate TLS certificates
+        run: |
+          mkdir -p certs
+          openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+            -keyout certs/ldap.key \
+            -out certs/ldap.crt \
+            -subj "/C=US/ST=Test/L=Test/O=Test/CN=openldap.test"
+      
+      - name: Start OpenLDAP with TLS
+        run: |
+          docker run -d \
+            --name openldap-tls \
+            -e LDAP_DOMAIN=${{ env.TEST_DOMAIN }} \
+            -e LDAP_ADMIN_PASSWORD=${{ env.TEST_ADMIN_PASSWORD }} \
+            -e LDAP_TLS_CERT=/certs/ldap.crt \
+            -e LDAP_TLS_KEY=/certs/ldap.key \
+            -p 389:389 \
+            -p 636:636 \
+            -v $(pwd)/certs:/certs:ro \
+            ${{ env.TEST_IMAGE }}
+          
+          # Wait for LDAP
+          echo "Waiting for LDAP..."
+          for i in {1..60}; do
+            if docker exec openldap-tls ldapsearch -x -H ldap://localhost:389 -b "" -s base 2>/dev/null | grep -q "OpenLDAProotDSE"; then
+              echo "✅ LDAP is ready"
+              sleep 3
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "❌ LDAP failed to start"
+              docker logs openldap-tls
+              exit 1
+            fi
+            sleep 2
+          done
+      
+      - name: Test StartTLS
+        run: |
+          echo "=== Testing StartTLS ==="
+          
+          if docker exec openldap-tls ldapsearch -x \
+            -H ldap://localhost:389 -ZZ \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" \
+            -b "${{ env.TEST_DOMAIN }}" \
+            -s base 2>&1 | grep -q "dn:"; then
+            echo "✅ StartTLS working"
+          else
+            echo "❌ StartTLS failed"
+            docker logs openldap-tls
+            exit 1
+          fi
+      
+      - name: Test LDAPS
+        run: |
+          echo "=== Testing LDAPS ==="
+          
+          if LDAPTLS_REQCERT=never docker exec openldap-tls ldapsearch -x \
+            -H ldaps://localhost:636 \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" \
+            -b "${{ env.TEST_DOMAIN }}" \
+            -s base 2>&1 | grep -q "dn:"; then
+            echo "✅ LDAPS working"
+          else
+            echo "❌ LDAPS failed"
+            exit 1
+          fi
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f openldap-tls || true
+          docker rmi ${{ env.TEST_IMAGE }} || true
+          rm -rf certs/
+
+  # Test 4: Idempotency and data persistence
+  test-idempotency:
+    name: Test Idempotency & Persistence
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openldap-image
+      
+      - name: Load image
+        run: docker load -i openldap-image.tar
+      
+      - name: Create test data on first start
+        run: |
+          # Create volume for persistence
+          docker volume create ldap-test-data
+          docker volume create ldap-test-config
+          
+          # First start
+          echo "=== First start ==="
+          docker run -d \
+            --name openldap-persist \
+            -e LDAP_DOMAIN=${{ env.TEST_DOMAIN }} \
+            -e LDAP_ADMIN_PASSWORD=${{ env.TEST_ADMIN_PASSWORD }} \
+            -e ENABLE_MONITORING=true \
+            -p 389:389 \
+            -v ldap-test-data:/var/lib/ldap \
+            -v ldap-test-config:/etc/openldap/slapd.d \
+            ${{ env.TEST_IMAGE }}
+          
+          # Wait for ready
+          for i in {1..60}; do
+            if docker exec openldap-persist ldapsearch -x -H ldap://localhost:389 -b "" -s base 2>/dev/null | grep -q "OpenLDAProotDSE"; then
+              echo "✅ LDAP ready"
+              sleep 3
+              break
+            fi
+            sleep 2
+          done
+          
+          # Create test data
+          docker exec openldap-persist ldapadd -x \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" << 'LDAPADD'
+          dn: ou=PersistenceTest,${{ env.TEST_DOMAIN }}
+          objectClass: organizationalUnit
+          ou: PersistenceTest
+          
+          dn: uid=persistuser,ou=PersistenceTest,${{ env.TEST_DOMAIN }}
+          objectClass: inetOrgPerson
+          uid: persistuser
+          cn: Persistence Test User
+          sn: User
+          userPassword: PersistPass123!
+          LDAPADD
+          
+          # Count entries
+          INITIAL_COUNT=$(docker exec openldap-persist ldapsearch -x \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" \
+            -b "${{ env.TEST_DOMAIN }}" "(objectClass=*)" 2>/dev/null | grep -c "^dn:" || echo "0")
+          echo "Initial entry count: $INITIAL_COUNT"
+          
+          if [ "$INITIAL_COUNT" -lt 3 ]; then
+            echo "❌ Initial data not created"
+            exit 1
+          fi
+          
+          echo "INITIAL_COUNT=$INITIAL_COUNT" >> $GITHUB_ENV
+      
+      - name: Stop container (preserving volumes)
+        run: |
+          echo "=== Stopping container ==="
+          docker stop openldap-persist
+          docker rm openldap-persist
+      
+      - name: Restart container and verify persistence
+        run: |
+          echo "=== Restarting container ==="
+          docker run -d \
+            --name openldap-persist \
+            -e LDAP_DOMAIN=${{ env.TEST_DOMAIN }} \
+            -e LDAP_ADMIN_PASSWORD=${{ env.TEST_ADMIN_PASSWORD }} \
+            -e ENABLE_MONITORING=true \
+            -p 389:389 \
+            -v ldap-test-data:/var/lib/ldap \
+            -v ldap-test-config:/etc/openldap/slapd.d \
+            ${{ env.TEST_IMAGE }}
+          
+          # Wait for ready
+          for i in {1..60}; do
+            if docker exec openldap-persist ldapsearch -x -H ldap://localhost:389 -b "" -s base 2>/dev/null | grep -q "OpenLDAProotDSE"; then
+              echo "✅ LDAP ready after restart"
+              sleep 3
+              break
+            fi
+            sleep 2
+          done
+          
+          # Check for errors in logs (should show "already configured" not errors)
+          echo "Checking logs for idempotency..."
+          docker logs openldap-persist 2>&1 | grep -E "(already configured|already exists)" | head -5 || true
+          
+          if docker logs openldap-persist 2>&1 | grep -iE "error|fail" | grep -v "already configured\|already exists\|error rate\|errorlog"; then
+            echo "❌ Errors found during restart"
+            docker logs openldap-persist
+            exit 1
+          fi
+          
+          # Verify data persistence
+          SECOND_COUNT=$(docker exec openldap-persist ldapsearch -x \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" \
+            -b "${{ env.TEST_DOMAIN }}" "(objectClass=*)" 2>/dev/null | grep -c "^dn:" || echo "0")
+          echo "Entry count after restart: $SECOND_COUNT"
+          
+          if [ "${{ env.INITIAL_COUNT }}" -ne "$SECOND_COUNT" ]; then
+            echo "❌ Entry count changed: ${{ env.INITIAL_COUNT }} -> $SECOND_COUNT"
+            exit 1
+          fi
+          
+          # Verify specific entry exists
+          if docker exec openldap-persist ldapsearch -x \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "${{ env.TEST_ADMIN_PASSWORD }}" \
+            -b "uid=persistuser,ou=PersistenceTest,${{ env.TEST_DOMAIN }}" \
+            "(objectClass=*)" 2>&1 | grep -q "cn: Persistence Test User"; then
+            echo "✅ Data persistence verified"
+          else
+            echo "❌ Test user not found after restart"
+            exit 1
+          fi
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f openldap-persist || true
+          docker volume rm ldap-test-data ldap-test-config || true
+          docker rmi ${{ env.TEST_IMAGE }} || true
+
+  # Test 5: Docker secrets support
+  test-docker-secrets:
+    name: Test Docker Secrets
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openldap-image
+      
+      - name: Load image
+        run: docker load -i openldap-image.tar
+      
+      - name: Create secret files
+        run: |
+          mkdir -p secrets
+          echo "SecretAdminPass456!" > secrets/admin_password.txt
+          echo "SecretConfigPass789!" > secrets/config_password.txt
+      
+      - name: Start OpenLDAP with secrets
+        run: |
+          docker run -d \
+            --name openldap-secrets \
+            -e LDAP_DOMAIN=${{ env.TEST_DOMAIN }} \
+            -e LDAP_ADMIN_PASSWORD_FILE=/run/secrets/admin_password \
+            -e LDAP_CONFIG_PASSWORD_FILE=/run/secrets/config_password \
+            -p 389:389 \
+            -v $(pwd)/secrets/admin_password.txt:/run/secrets/admin_password:ro \
+            -v $(pwd)/secrets/config_password.txt:/run/secrets/config_password:ro \
+            ${{ env.TEST_IMAGE }}
+          
+          # Wait for ready
+          for i in {1..60}; do
+            if docker exec openldap-secrets ldapsearch -x -H ldap://localhost:389 -b "" -s base 2>/dev/null | grep -q "OpenLDAProotDSE"; then
+              echo "✅ LDAP ready"
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "❌ LDAP failed to start"
+              docker logs openldap-secrets
+              exit 1
+            fi
+            sleep 2
+          done
+      
+      - name: Test authentication with secret password
+        run: |
+          echo "=== Testing authentication with secret password ==="
+          
+          if docker exec openldap-secrets ldapsearch -x \
+            -H ldap://localhost:389 \
+            -D "cn=Manager,${{ env.TEST_DOMAIN }}" \
+            -w "SecretAdminPass456!" \
+            -b "${{ env.TEST_DOMAIN }}" \
+            -s base 2>&1 | grep -q "dn:"; then
+            echo "✅ Docker secrets working"
+          else
+            echo "❌ Authentication with secret password failed"
+            exit 1
+          fi
+          
+          # Verify password is NOT in environment
+          echo "Verifying password not exposed in env..."
+          if docker exec openldap-secrets env | grep -q "SecretAdminPass456"; then
+            echo "⚠️ Warning: Password may be exposed in environment"
+          else
+            echo "✅ Password not exposed in environment variables"
+          fi
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f openldap-secrets || true
+          docker rmi ${{ env.TEST_IMAGE }} || true
+          rm -rf secrets/
+
+  # Summary job (for branch protection)
+  integration-test-summary:
+    name: Integration Test Summary
+    runs-on: ubuntu-latest
+    needs:
+      - test-basic-acl
+      - test-overlays
+      - test-tls
+      - test-idempotency
+      - test-docker-secrets
+    if: always()
+    steps:
+      - name: Check all tests passed
+        run: |
+          echo "Basic + ACL: ${{ needs.test-basic-acl.result }}"
+          echo "Overlays: ${{ needs.test-overlays.result }}"
+          echo "TLS: ${{ needs.test-tls.result }}"
+          echo "Idempotency: ${{ needs.test-idempotency.result }}"
+          echo "Docker Secrets: ${{ needs.test-docker-secrets.result }}"
+          
+          if [[ "${{ needs.test-basic-acl.result }}" == "success" && \
+                "${{ needs.test-overlays.result }}" == "success" && \
+                "${{ needs.test-tls.result }}" == "success" && \
+                "${{ needs.test-idempotency.result }}" == "success" && \
+                "${{ needs.test-docker-secrets.result }}" == "success" ]]; then
+            echo "✅ All integration tests passed!"
+            exit 0
+          else
+            echo "❌ Some integration tests failed"
+            exit 1
+          fi

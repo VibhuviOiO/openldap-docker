@@ -1,9 +1,12 @@
 # Create default password policy
 # Variables: LDAP_BASE_DN
-dn: cn=default,ou=Policies,{{LDAP_BASE_DN}}
+
+# First create the parent OU for policies
+dn: ou=Policies,{{LDAP_BASE_DN}}
 objectClass: organizationalUnit
 ou: Policies
 
+# Create the default password policy entry
 dn: cn=default,ou=Policies,{{LDAP_BASE_DN}}
 objectClass: pwdPolicy
 objectClass: person

@@ -1,4 +1,6 @@
 #!/bin/bash
+set -eo pipefail
+
 # OpenLDAP replication configuration functions
 
 source /usr/local/bin/scripts/utils.sh

@@ -1,4 +1,6 @@
 #!/bin/bash
+set -eo pipefail
+
 # OpenLDAP schema loading functions
 
 source /usr/local/bin/scripts/utils.sh
