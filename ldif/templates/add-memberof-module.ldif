@@ -1,0 +1,5 @@
+# Add memberof module to existing module entry
+dn: cn=module{0},cn=config
+changetype: modify
+add: olcModuleLoad
+olcModuleLoad: memberof.la

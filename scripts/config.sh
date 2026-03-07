@@ -127,6 +127,29 @@ configure_memberof() {
         return 0
     fi
     
+    # Load memberof and refint modules first
+    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=module{0},cn=config" 2>/dev/null | grep -q "memberof.la"; then
+        log_step "Loading memberof module..."
+        if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=module{0},cn=config" -s base 2>/dev/null | grep -q "dn: cn=module{0},cn=config"; then
+            # Entry exists, add memberof module
+            local memberof_module_ldif=$(get_ldif_path "add-memberof-module")
+            cp "$LDIF_TEMPLATE_DIR/add-memberof-module.ldif" "$memberof_module_ldif"
+            cat "$memberof_module_ldif" | ldap_retry 5 2 ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry" || true
+        else
+            # Create module entry
+            local memberof_module_ldif=$(get_ldif_path "load-memberof-module")
+            cp "$LDIF_TEMPLATE_DIR/load-memberof-module.ldif" "$memberof_module_ldif"
+            cat "$memberof_module_ldif" | ldap_retry 5 2 ldapadd -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "adding new entry" || true
+        fi
+    fi
+    
+    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=module{0},cn=config" 2>/dev/null | grep -q "refint.la"; then
+        log_step "Loading refint module..."
+        local refint_module_ldif=$(get_ldif_path "add-refint-module")
+        cp "$LDIF_TEMPLATE_DIR/add-refint-module.ldif" "$refint_module_ldif"
+        cat "$refint_module_ldif" | ldap_retry 5 2 ldapmodify -Y EXTERNAL -H ldapi:/// 2>&1 | grep -v "modifying entry" || true
+    fi
+    
     # Add refint overlay first (required for memberOf)
     log_step "Adding refint overlay..."
     local refint_ldif=$(get_ldif_path "add-refint-overlay")

@@ -64,6 +64,7 @@ fi
 
 echo ""
 echo "→ Test 2: LDAPS (Direct SSL on port 636)"
+sleep 5
 if docker exec "$ACTUAL_CONTAINER" bash -c "LDAPTLS_REQCERT=never ldapsearch -x -H ldaps://localhost:636 -D '$ADMIN_DN' -w '$ADMIN_PASS' -b '$BASE_DN' -s base" 2>&1 | grep -q "dn:"; then
     echo -e "${GREEN}✓ LDAPS connection successful${NC}"
 else
