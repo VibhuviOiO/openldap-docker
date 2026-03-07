@@ -2,12 +2,6 @@ name: Docker Publish
 
 on:
   workflow_dispatch:
-    inputs:
-      no_cache:
-        description: 'Build without cache'
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -70,7 +64,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          no-cache: ${{ github.event.inputs.no_cache == 'true' }}
+          no-cache: true
 
       - name: Image digest
         run: echo "Image published: ${{ steps.meta.outputs.tags }}"
