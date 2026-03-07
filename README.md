@@ -4,7 +4,8 @@
 [![License](https://img.shields.io/github/license/VibhuviOiO/openldap-docker?style=flat)](https://github.com/VibhuviOiO/openldap-docker/blob/main/LICENSE)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/VibhuviOiO/openldap-docker/badge)](https://scorecard.dev/viewer/?uri=github.com/VibhuviOiO/openldap-docker)
 [![Build](https://img.shields.io/github/actions/workflow/status/VibhuviOiO/openldap-docker/docker-publish.yml?label=build&logo=githubactions&logoColor=white)](https://github.com/VibhuviOiO/openldap-docker/actions/workflows/docker-publish.yml)
-[![Security](https://img.shields.io/badge/Security-Trivy%20%7C%20cosign%20%7C%20SBOM-blue?logo=aquasecurity)](./SECURITY.md)
+[![Security Scan](https://img.shields.io/github/workflow/status/vibhuvioio/openldap-docker/Docker%20Publish?label=Trivy&logo=aquasecurity&color=blue)](./SECURITY.md)
+[![Vulnerabilities](https://img.shields.io/badge/Vulns-View%20Report-orange?logo=aquasecurity)](../../security/code-scanning)
 
 Production-ready OpenLDAP container with enterprise features.
 
@@ -25,6 +26,7 @@ Production-ready OpenLDAP container with enterprise features.
 - **Secure ACLs** - Password protection, authenticated access required
 - **Health checks** - Built-in Docker health monitoring
 - **Signal handling** - Graceful shutdown on SIGTERM/SIGINT
+- **Vulnerability scanning** - Trivy scans on every build ([View Report](../../security/code-scanning))
 
 ### Optional Overlays
 - **memberOf** - Track group membership on user entries
