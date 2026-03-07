@@ -7,7 +7,8 @@ fix_permissions() {
     if [ "$(id -u)" = "0" ]; then
         echo "[INFO] Fixing permissions for mounted volumes..."
         # Fix ownership of volumes that need to be writable by ldap user
-        for dir in /logs /var/lib/ldap /etc/openldap/slapd.d /var/run/openldap /tmp/ldap-init /usr/local/bin/ldif/generated; do
+        # Note: /tmp/ldap-init must stay owned by root for no-new-privileges support
+        for dir in /logs /var/lib/ldap /etc/openldap/slapd.d /var/run/openldap /tmp/ldap-init/ldif /usr/local/bin/ldif/generated; do
             if [ -d "$dir" ]; then
                 chown -R ldap:ldap "$dir" 2>/dev/null || true
                 chmod 755 "$dir" 2>/dev/null || true
@@ -26,6 +27,9 @@ source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/schema.sh"
 source "$SCRIPT_DIR/replication.sh"
 source "$SCRIPT_DIR/ldif-processor.sh"
+
+# Fix permissions again after sourcing (scripts may create directories)
+fix_permissions
 
 # Default values
 : "${LDAP_LOG_LEVEL:=256}"
@@ -49,13 +53,13 @@ source "$SCRIPT_DIR/ldif-processor.sh"
 
 # Load passwords from files if specified (more secure than env vars)
 if [ -n "$LDAP_ADMIN_PASSWORD_FILE" ] && [ -f "$LDAP_ADMIN_PASSWORD_FILE" ]; then
-    LDAP_ADMIN_PASSWORD=$(cat "$LDAP_ADMIN_PASSWORD_FILE")
-    log_info "Loaded admin password from file"
+    LDAP_ADMIN_PASSWORD=$(cat "$LDAP_ADMIN_PASSWORD_FILE" | tr -d '\n\r')
+    log_info "Loaded admin password from file (length: ${#LDAP_ADMIN_PASSWORD})"
 fi
 
 if [ -n "$LDAP_CONFIG_PASSWORD_FILE" ] && [ -f "$LDAP_CONFIG_PASSWORD_FILE" ]; then
-    LDAP_CONFIG_PASSWORD=$(cat "$LDAP_CONFIG_PASSWORD_FILE")
-    log_info "Loaded config password from file"
+    LDAP_CONFIG_PASSWORD=$(cat "$LDAP_CONFIG_PASSWORD_FILE" | tr -d '\n\r')
+    log_info "Loaded config password from file (length: ${#LDAP_CONFIG_PASSWORD})"
 fi
 
 # Export for use in sourced scripts
@@ -121,8 +125,10 @@ main() {
     log_info "Server ID: $SERVER_ID"
     
     # Generate password hashes
+    log_info "Generating password hashes..."
     local admin_hash=$(slappasswd -s "$LDAP_ADMIN_PASSWORD")
     local config_hash=$(slappasswd -s "$LDAP_CONFIG_PASSWORD")
+    log_info "Admin hash prefix: ${admin_hash:0:20}..."
     
     # Prepare directories and log file
     mkdir -p /logs
@@ -133,7 +139,8 @@ main() {
     # Start slapd in background for configuration
     log_info "Starting slapd for initial configuration..."
     # Check if slapd can start (capture errors)
-    if ! /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d 1 -Tt 2>&1; then
+    # Note: Don't use -u/-g here because no-new-privileges prevents setuid
+    if ! /usr/sbin/slapd -h "ldap:/// ldaps:/// ldapi:///" -d 1 -Tt 2>&1; then
         log_warn "slaptest indicates potential issues, but continuing..."
     fi
     /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d 256 &
@@ -235,6 +242,10 @@ main() {
     # Ensure filesystem is synced after slapd stops
     sync
     SLAPD_PID=""
+    
+    # Wait for port to be released (prevent "Address already in use")
+    # MDB recovery and socket cleanup can take several seconds
+    sleep 5
     
     # Setup log rotation
     setup_logrotate

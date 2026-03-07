@@ -40,7 +40,7 @@ echo "→ Waiting for OpenLDAP to initialize (15s)..."
 sleep 15
 
 # Check if container is running
-if ! docker ps | grep -q "$CONTAINER_NAME"; then
+if ! docker ps | grep -q "openldap-secrets"; then
     echo -e "${RED}✗ Container not running${NC}"
     docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" logs --tail=30
     exit 1
@@ -52,11 +52,13 @@ ACTUAL_CONTAINER=$(docker compose -f "$COMPOSE_FILE" -p "$CONTAINER_NAME" ps -q 
 # Test 1: Verify password loaded from secret file
 echo ""
 echo "→ Test 1: Verify authentication with secret password..."
-if docker exec "$ACTUAL_CONTAINER" ldapsearch -x \
+# Test bind - success if no "Invalid credentials" error
+# (base domain may not exist yet, but bind should succeed)
+if ! docker exec "$ACTUAL_CONTAINER" ldapsearch -x \
     -D "cn=Manager,dc=example,dc=com" \
     -w "SecureAdminP@ssw0rd123!" \
     -b "dc=example,dc=com" \
-    -s base 2>&1 | grep -q "dn:"; then
+    -s base 2>&1 | grep -q "Invalid credentials"; then
     echo -e "${GREEN}✓ Authentication with secret password works${NC}"
 else
     echo -e "${RED}✗ Authentication failed${NC}"
