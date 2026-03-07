@@ -6,6 +6,10 @@
 # Documentation (keep only main README.md)
 *.md
 !README.md
+!SECURITY.md
+!CONTRIBUTING.md
+!CODE_OF_CONDUCT.md
+!LICENSE.md
 
 # Development and Testing Tools (not for production)
 dev-tools/

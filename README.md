@@ -1,6 +1,13 @@
 # OpenLDAP Docker
 
+[![GitHub Stars](https://img.shields.io/github/stars/VibhuviOiO/openldap-docker?style=flat&logo=github)](https://github.com/VibhuviOiO/openldap-docker)
+[![License](https://img.shields.io/github/license/VibhuviOiO/openldap-docker?style=flat)](https://github.com/VibhuviOiO/openldap-docker/blob/main/LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/VibhuviOiO/openldap-docker/badge)](https://scorecard.dev/viewer/?uri=github.com/VibhuviOiO/openldap-docker)
+[![Build](https://img.shields.io/github/actions/workflow/status/VibhuviOiO/openldap-docker/docker-publish.yml?label=build&logo=githubactions&logoColor=white)](https://github.com/VibhuviOiO/openldap-docker/actions/workflows/docker-publish.yml)
+
 Production-ready OpenLDAP container with enterprise features.
+
+**📖 [Documentation](https://vibhuvioio.com/openldap-docker/)** | **📦 [Container Registry](https://github.com/VibhuviOiO/openldap-docker/pkgs/container/openldap)**
 
 ## Features
 

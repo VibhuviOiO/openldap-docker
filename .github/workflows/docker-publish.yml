@@ -6,6 +6,8 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
+  security-events: write
 
 env:
   REGISTRY: ghcr.io
@@ -13,8 +15,11 @@ env:
 
 jobs:
   build-and-push:
-    name: Build and Push
+    name: Build, Scan, Sign & Push
     runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      image: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -55,6 +60,7 @@ jobs:
             type=raw,value=${{ steps.version.outputs.version }}
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -64,5 +70,51 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           no-cache: true
 
-      - name: Image digest
-        run: echo "Image published - ${{ steps.meta.outputs.tags }}"
+      # --- Security: Vulnerability Scan ---
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}:latest
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "0"
+
+      - name: Upload Trivy scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+      # --- Supply Chain: cosign signing ---
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign the container image
+        run: |
+          cosign sign --yes \
+            "${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
+
+      # --- Supply Chain: SBOM attestation ---
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}:latest
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Attest SBOM to image
+        run: |
+          cosign attest --yes \
+            --type spdx \
+            --predicate sbom.spdx.json \
+            "${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
+
+      - name: Summary
+        run: |
+          echo "### Image Published" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Digest:** ${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Signed:** Yes (cosign/Sigstore)" >> $GITHUB_STEP_SUMMARY
+          echo "- **SBOM:** Attached (SPDX)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Scanned:** Trivy (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
