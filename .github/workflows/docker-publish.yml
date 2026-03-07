@@ -40,9 +40,7 @@ jobs:
       - name: Extract OpenLDAP version
         id: version
         run: |
-          # Build a temporary image to get slapd version
           docker build --no-cache -t openldap:temp .
-          # Get version from slapd
           VERSION=$(docker run --rm openldap:temp /usr/sbin/slapd -V 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "2.6.8")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Using OpenLDAP version: $VERSION"
@@ -67,4 +65,4 @@ jobs:
           no-cache: true
 
       - name: Image digest
-        run: echo "Image published: ${{ steps.meta.outputs.tags }}"
+        run: echo "Image published - ${{ steps.meta.outputs.tags }}"
