@@ -41,4 +41,15 @@ git push origin v2.6.8
 # GitHub Action automatically builds and publishes
 ```
 
+## Running the Container
+
+```bash
+docker compose up -d
+```
+
+## Default LDAP credentials
+```bash
+DN: cn=admin,dc=example,dc=org
+Password: admin
+```
 Or manually trigger via GitHub Actions UI with "Build without cache" option.
