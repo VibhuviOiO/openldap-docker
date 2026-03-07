@@ -98,7 +98,7 @@ create_creds_file() {
     local tmpfile
     tmpfile=$(mktemp /tmp/ldap_creds.XXXXXX)
     chmod 600 "$tmpfile"
-    echo "$password" > "$tmpfile"
+    printf '%s' "$password" > "$tmpfile"
     echo "$tmpfile"
 }
 

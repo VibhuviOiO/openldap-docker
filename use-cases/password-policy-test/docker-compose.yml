@@ -1,8 +1,6 @@
 services:
   openldap:
-    build:
-      context: ../..
-      dockerfile: Dockerfile
+    image: openldap:local
     container_name: openldap-password-policy
     hostname: openldap-password-policy
     env_file:

@@ -215,45 +215,7 @@ main() {
     cleanup_generated_ldif
     log_success "Generated LDIF files cleaned up"
     
-    # Sync database to disk before stopping (critical for MDB persistence)
-    log_step "Syncing database to disk..."
-    # Use slapcat to force MDB to sync to disk
-    slapcat -b "${LDAP_BASE_DN}" >/dev/null 2>&1 || true
-    # Sync filesystem buffers
-    sync
-    
-    # Stop the background slapd gracefully with TERM signal
-    log_info "Stopping temporary slapd..."
-    if kill -0 "$SLAPD_PID" 2>/dev/null; then
-        kill -TERM "$SLAPD_PID" 2>/dev/null || true
-        # Wait up to 10 seconds for graceful shutdown
-        for i in {1..10}; do
-            if ! kill -0 "$SLAPD_PID" 2>/dev/null; then
-                break
-            fi
-            sleep 1
-        done
-        # Force kill if still running
-        if kill -0 "$SLAPD_PID" 2>/dev/null; then
-            kill -9 "$SLAPD_PID" 2>/dev/null || true
-        fi
-        wait "$SLAPD_PID" 2>/dev/null || true
-    fi
-    # Ensure filesystem is synced after slapd stops
-    sync
-    SLAPD_PID=""
-    
-    # Wait for port to be released (prevent "Address already in use")
-    # MDB recovery and socket cleanup can take several seconds
-    sleep 5
-    
-    # Setup log rotation
-    setup_logrotate
-    
-    # Start slapd in foreground
-    log_info "Starting slapd in foreground mode..."
-    
-    # Check if init scripts need to run
+    # Check if init scripts need to run (BEFORE stopping slapd)
     local has_init_scripts=false
     if [ -d "/docker-entrypoint-initdb.d" ]; then
         for script in /docker-entrypoint-initdb.d/*.sh; do
@@ -264,31 +226,11 @@ main() {
         done
     fi
     
-    if [ "$has_init_scripts" = "false" ]; then
-        # No init scripts - start slapd and wait (logs go to file)
-        log_info "No init scripts found, starting slapd..."
-        /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d "$LDAP_LOG_LEVEL" >> /logs/slapd.log 2>&1 &
-        SLAPD_PID=$!
-        wait $SLAPD_PID
-    else
-        # Has init scripts - need background mode
-        /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d "$LDAP_LOG_LEVEL" >> /logs/slapd.log 2>&1 &
-        SLAPD_PID=$!
+    if [ "$has_init_scripts" = "true" ]; then
+        # Init scripts present - keep slapd running and execute them
+        log_info "Init scripts found, keeping slapd running..."
         
-        # Verify slapd started successfully
-        sleep 2
-        if ! kill -0 "$SLAPD_PID" 2>/dev/null; then
-            log_error "slapd failed to start!"
-            exit 1
-        fi
-        
-        # Wait for slapd to be ready for init scripts
-        if ! wait_for_slapd 30 1; then
-            log_error "slapd not ready for init scripts"
-            exit 1
-        fi
-        
-        # Run init scripts
+        # Run init scripts against the already running slapd
         log_header "Running initialization scripts..."
         for script in /docker-entrypoint-initdb.d/*.sh; do
             if [ -f "$script" ]; then
@@ -300,14 +242,62 @@ main() {
                 fi
             fi
         done
-        
         log_success "All initialization scripts completed"
         
+        # Sync database to disk
+        log_step "Syncing database to disk..."
+        slapcat -b "${LDAP_BASE_DN}" >/dev/null 2>&1 || true
+        sync
+        
         # Keep slapd running with proper signal handling
+        log_info "Keeping slapd running in foreground..."
+        wait $SLAPD_PID
+    else
+        # No init scripts - stop slapd and restart cleanly
+        log_step "Syncing database to disk..."
+        slapcat -b "${LDAP_BASE_DN}" >/dev/null 2>&1 || true
+        sync
+        
+        log_info "Stopping temporary slapd..."
+        if kill -0 "$SLAPD_PID" 2>/dev/null; then
+            kill -TERM "$SLAPD_PID" 2>/dev/null || true
+            for i in {1..10}; do
+                if ! kill -0 "$SLAPD_PID" 2>/dev/null; then
+                    break
+                fi
+                sleep 1
+            done
+            if kill -0 "$SLAPD_PID" 2>/dev/null; then
+                kill -9 "$SLAPD_PID" 2>/dev/null || true
+            fi
+            wait "$SLAPD_PID" 2>/dev/null || true
+        fi
+        sync
+        SLAPD_PID=""
+        
+        log_info "Waiting for port 389 to be released..."
+        sleep 30
+        local port_wait=0
+        while [ $port_wait -lt 30 ]; do
+            if ! grep -q ":0185 " /proc/net/tcp 2>/dev/null; then
+                break
+            fi
+            sleep 1
+            port_wait=$((port_wait + 1))
+        done
+        if [ $port_wait -ge 30 ]; then
+            log_warn "Port 389 still in use after 60s..."
+        fi
+        sleep 10
+        
+        setup_logrotate
+        
+        log_info "Starting slapd in foreground mode..."
+        /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d "$LDAP_LOG_LEVEL" >> /logs/slapd.log 2>&1 &
+        SLAPD_PID=$!
         wait $SLAPD_PID
     fi
 }
-
 # Setup log rotation (skipped for read-only rootfs - handle externally)
 setup_logrotate() {
     # Log rotation is handled outside the container when using read-only rootfs
