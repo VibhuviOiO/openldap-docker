@@ -1,9 +1,6 @@
 name: Docker Publish
 
-# Build and publish Docker image on version tags or manual trigger
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       no_cache:
