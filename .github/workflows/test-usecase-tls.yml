@@ -1,0 +1,52 @@
+name: Test Use-Case - TLS/SSL
+
+# This workflow is called by docker-publish.yml after image build
+# Can also be triggered manually for testing
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to test'
+        required: false
+        type: string
+        default: 'latest'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to test'
+        required: false
+        default: 'latest'
+
+jobs:
+  test-tls:
+    name: Test TLS Use-Case
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Pull image
+        run: docker pull ghcr.io/vibhuvioio/openldap:${{ inputs.image_tag || github.event.inputs.image_tag || 'latest' }}
+
+      - name: Run TLS test
+        run: |
+          chmod +x use-cases/tls-enabled/test.sh
+          use-cases/tls-enabled/test.sh ${{ inputs.image_tag || github.event.inputs.image_tag || 'latest' }}
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tls-logs
+          path: |
+            use-cases/tls-enabled/logs/
+          retention-days: 3
+
+      - name: Cleanup
+        if: always()
+        run: |
+          cd use-cases/tls-enabled
+          docker compose down -v || true
