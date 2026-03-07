@@ -5,7 +5,7 @@ set -eo pipefail
 fix_permissions() {
     # Only run if we're root
     if [ "$(id -u)" = "0" ]; then
-        log_info "Fixing permissions for mounted volumes..."
+        echo "[INFO] Fixing permissions for mounted volumes..."
         # Fix ownership of volumes that need to be writable by ldap user
         for dir in /logs /var/lib/ldap /etc/openldap/slapd.d /var/run/openldap /tmp/ldap-init /usr/local/bin/ldif/generated; do
             if [ -d "$dir" ]; then
