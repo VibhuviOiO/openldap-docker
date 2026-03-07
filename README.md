@@ -4,6 +4,7 @@
 [![License](https://img.shields.io/github/license/VibhuviOiO/openldap-docker?style=flat)](https://github.com/VibhuviOiO/openldap-docker/blob/main/LICENSE)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/VibhuviOiO/openldap-docker/badge)](https://scorecard.dev/viewer/?uri=github.com/VibhuviOiO/openldap-docker)
 [![Build](https://img.shields.io/github/actions/workflow/status/VibhuviOiO/openldap-docker/docker-publish.yml?label=build&logo=githubactions&logoColor=white)](https://github.com/VibhuviOiO/openldap-docker/actions/workflows/docker-publish.yml)
+[![Security](https://img.shields.io/badge/Security-Trivy%20%7C%20cosign%20%7C%20SBOM-blue?logo=aquasecurity)](./SECURITY.md)
 
 Production-ready OpenLDAP container with enterprise features.
 
@@ -369,3 +370,38 @@ Multi-master replication uses simple bind authentication with the admin password
 ## License
 
 MIT License
+
+## Security
+
+[![Security Scan](https://img.shields.io/github/workflow/status/vibhuvioio/openldap-docker/Docker%20Publish?label=security%20scan)](https://github.com/vibhuvioio/openldap-docker/security)
+
+### Vulnerability Reports
+
+- **Trivy Scan Results**: View in [GitHub Security tab](../../security)
+- **Container Image**: `ghcr.io/vibhuvioio/openldap:latest`
+
+
+## 🔒 Security
+
+This project uses automated security scanning:
+
+| Tool | Purpose | Report |
+|------|---------|--------|
+| **Trivy** | Container vulnerability scanning | [View Report](../../security/code-scanning) |
+| **cosign** | Image signing with Sigstore | [Verify Image](./SECURITY.md) |
+| **Syft** | SBOM generation | [Security Policy](./SECURITY.md) |
+
+### Security Badges
+
+- ![Signed](https://img.shields.io/badge/Signed-cosign-blue?logo=sigstore) Container images are signed
+- ![Scanned](https://img.shields.io/badge/Scanned-Trivy-success?logo=aquasecurity) Vulnerabilities scanned on every build
+- ![SBOM](https://img.shields.io/badge/SBOM-SPDX-green) Software Bill of Materials attached
+
+### Viewing Vulnerability Reports
+
+1. Navigate to [GitHub Security tab](../../security)
+2. Click "Code scanning alerts"
+3. Filter by tool: "Trivy"
+
+Or view the detailed [Security Policy](./SECURITY.md).
+
