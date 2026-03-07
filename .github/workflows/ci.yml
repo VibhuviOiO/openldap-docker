@@ -1,0 +1,68 @@
+name: CI Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Build Docker image
+        run: docker build --no-cache -t openldap:test .
+
+      - name: Start container
+        run: |
+          docker run -d --name ldap-test \
+            -e LDAP_DOMAIN=test.local \
+            -e LDAP_ADMIN_PASSWORD=testpass \
+            -p 389:389 \
+            openldap:test
+
+      - name: Wait for LDAP to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec ldap-test ldapsearch -x -H ldap://localhost -b "" -s base namingContexts 2>/dev/null | grep -q "namingContexts"; then
+              echo "LDAP is ready"
+              exit 0
+            fi
+            echo "Waiting for LDAP... ($i/30)"
+            sleep 2
+          done
+          echo "LDAP failed to start"
+          docker logs ldap-test
+          exit 1
+
+      - name: Test LDAP bind
+        run: |
+          docker exec ldap-test ldapsearch -x -H ldap://localhost \
+            -D "cn=admin,dc=test,dc=local" -w testpass \
+            -b "dc=test,dc=local" -s base "(objectClass=*)" dn
+
+      - name: Test health check
+        run: |
+          docker exec ldap-test /usr/local/bin/scripts/healthcheck.sh
+
+      - name: Test non-root execution
+        run: |
+          PROC_USER=$(docker exec ldap-test ps -o user= -p 1 2>/dev/null || docker exec ldap-test stat -c '%U' /proc/1)
+          echo "Process running as: $PROC_USER"
+          if echo "$PROC_USER" | grep -qE "ldap|55"; then
+            echo "PASS: Running as non-root (ldap user)"
+          else
+            echo "FAIL: Not running as ldap user"
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f ldap-test 2>/dev/null || true
