@@ -1,58 +1,46 @@
 # Security Policy
 
-## Supported Versions
+## Container Image Security
 
-| Version | Supported          |
-|---------|--------------------|
-| latest  | :white_check_mark: |
-| < latest | :x:               |
+### Latest Scan Results
 
-Only the latest release is actively supported with security updates.
+| Check | Status |
+|-------|--------|
+| Trivy Security Scan | [![Security Scan](https://img.shields.io/github/workflow/status/vibhuvioio/openldap-docker/Docker%20Publish?label=Trivy&logo=aquasecurity)](https://github.com/vibhuvioio/openldap-docker/actions/workflows/docker-publish.yml) |
+| Image Signing | ![Signed](https://img.shields.io/badge/Signed-cosign-blue?logo=sigstore) |
+| SBOM | ![SBOM](https://img.shields.io/badge/SBOM-SPDX-green) |
 
-## Reporting a Vulnerability
+### Container Image
 
-**Please do NOT report security vulnerabilities through public GitHub issues.**
-
-Instead, report vulnerabilities by emailing **security@vibhuvioio.com**.
-
-Please include:
-
-- Description of the vulnerability
-- Steps to reproduce
-- Impact assessment
-- Suggested fix (if any)
-
-You should receive an acknowledgment within **48 hours**. We aim to provide a fix or mitigation within **7 days** for critical issues.
-
-## Security Practices
-
-This project follows these security practices:
-
-- **Non-root execution** — Container runs as `ldap` user (UID 55)
-- **Minimal base image** — AlmaLinux 9 with only required packages (`--nodocs`)
-- **No secrets in image** — All credentials passed via environment variables or Docker secrets
-- **Container scanning** — Trivy vulnerability scanning on every build
-- **Image signing** — Published images are signed with cosign/Sigstore
-- **SBOM attestation** — Software Bill of Materials attached to every image
-- **Secure ACLs** — Password attributes protected, authenticated access required
-- **TLS support** — StartTLS and LDAPS for encrypted connections
-- **Read-only root filesystem compatible** — Writable paths are limited and documented
-- **`STOPSIGNAL SIGTERM`** — Graceful shutdown support
-- **Dropped capabilities** — Only `NET_BIND_SERVICE` retained
-
-## Verifying Image Signatures
-
-```bash
-cosign verify ghcr.io/vibhuvioio/openldap:latest \
-  --certificate-identity-regexp="https://github.com/VibhuviOiO/openldap-docker" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+```
+ghcr.io/vibhuvioio/openldap:latest
 ```
 
-## Verifying SBOM
+### Verifying Image Signature
 
 ```bash
-cosign verify-attestation ghcr.io/vibhuvioio/openldap:latest \
-  --type spdx \
-  --certificate-identity-regexp="https://github.com/VibhuviOiO/openldap-docker" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+cosign verify \
+  --certificate-identity-regexp="https://github.com/vibhuvioio/openldap-docker/.github/workflows/docker-publish.yml@refs/tags/v*" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  ghcr.io/vibhuvioio/openldap:latest
 ```
+
+### Viewing Vulnerability Reports
+
+1. Go to [GitHub Security tab](../../security)
+2. Click "Code scanning alerts"
+3. Filter by tool: "Trivy"
+
+### Reporting Security Issues
+
+Please report security vulnerabilities by opening a [GitHub Issue](../../issues).
+
+## Security Features
+
+- ✅ **Trivy vulnerability scanning** on every build
+- ✅ **cosign/Sigstore image signing** for supply chain security
+- ✅ **SPDX SBOM generation** for complete bill of materials
+- ✅ **Multi-arch builds** (linux/amd64, linux/arm64)
+- ✅ **Non-root container execution**
+- ✅ **Read-only root filesystem** support
+- ✅ **Capability dropping** (runs with minimal privileges)
