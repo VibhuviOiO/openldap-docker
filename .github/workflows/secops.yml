@@ -83,11 +83,11 @@ jobs:
           format: spdx-json
           output-file: sbom.spdx.json
 
-      - name: Attest SBOM to image
+      - name: Attach SBOM to image
         run: |
-          cosign attest --yes \
+          cosign attach sbom \
+            --sbom sbom.spdx.json \
             --type spdx \
-            --predicate sbom.spdx.json \
             "${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.digest }}"
 
       - name: Summary
