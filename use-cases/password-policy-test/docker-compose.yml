@@ -1,0 +1,45 @@
+services:
+  openldap:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    container_name: openldap-password-policy
+    hostname: openldap-password-policy
+    env_file:
+      - .env.password-policy
+    ports:
+      - "391:389"
+      - "638:636"
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/openldap/slapd.d
+      - ./logs:/logs
+      - ./test-password-policy.sh:/docker-entrypoint-initdb.d/test-password-policy.sh:ro
+    restart: unless-stopped
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+    
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    networks:
+      - ldap-shared-network
+
+volumes:
+  ldap-data:
+  ldap-config:
+
+networks:
+  ldap-shared-network:
+    external: true

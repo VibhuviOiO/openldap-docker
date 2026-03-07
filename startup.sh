@@ -1,8 +1,5 @@
 #!/bin/bash
-set -e
-
-#!/bin/bash
-set -e
+set -eo pipefail
 
 # Fix permissions for mounted volumes (run as root initially)
 fix_permissions() {
@@ -25,6 +22,7 @@ source "$SCRIPT_DIR/utils.sh"
 source "$SCRIPT_DIR/config.sh"
 source "$SCRIPT_DIR/schema.sh"
 source "$SCRIPT_DIR/replication.sh"
+source "$SCRIPT_DIR/ldif-processor.sh"
 
 # Fix permissions (must run before anything else)
 fix_permissions
@@ -46,6 +44,8 @@ fix_permissions
 : "${INCLUDE_SCHEMAS:=}"
 : "${LDAP_PORT:=389}"
 : "${LDAPS_PORT:=636}"
+: "${LDAP_CONN_MAX_PENDING:=100}"
+: "${LDAP_CONN_MAX_PENDING_AUTH:=1000}"
 
 # Load passwords from files if specified (more secure than env vars)
 if [ -n "$LDAP_ADMIN_PASSWORD_FILE" ] && [ -f "$LDAP_ADMIN_PASSWORD_FILE" ]; then
@@ -61,6 +61,7 @@ fi
 # Export for use in sourced scripts
 export LDAP_DOMAIN LDAP_ORGANIZATION LDAP_ADMIN_PASSWORD LDAP_CONFIG_PASSWORD
 export ENABLE_REPLICATION ENABLE_MONITORING ENABLE_MEMBEROF ENABLE_PASSWORD_POLICY ENABLE_AUDIT_LOG SERVER_ID
+export LDAP_CONN_MAX_PENDING LDAP_CONN_MAX_PENDING_AUTH
 
 # Global variable to track slapd PID
 SLAPD_PID=""
@@ -164,12 +165,12 @@ main() {
         configure_indices
         set_query_limits
         set_timeouts
+        set_connection_limits "$LDAP_CONN_MAX_PENDING" "$LDAP_CONN_MAX_PENDING_AUTH"
         configure_monitor "$ENABLE_MONITORING"
         set_log_level "$LDAP_LOG_LEVEL"
         enable_db_monitoring
         configure_tls
         configure_memberof "$ENABLE_MEMBEROF"
-        configure_password_policy "$ENABLE_PASSWORD_POLICY"
         configure_audit_log "$ENABLE_AUDIT_LOG"
         
         log_success "Database configuration complete"
@@ -190,6 +191,9 @@ main() {
     # Load custom schemas
     load_custom_schemas
     
+    # Configure password policy (must be after base domain is created)
+    configure_password_policy "$ENABLE_PASSWORD_POLICY"
+    
     # Configure replication if enabled
     if [ "$ENABLE_REPLICATION" = "true" ]; then
         configure_replication "$SERVER_ID" "$LDAP_BASE_DN" "$LDAP_ADMIN_DN" "$LDAP_ADMIN_PASSWORD" "$REPLICATION_PEERS" "$REPLICATION_RIDS"
@@ -199,12 +203,37 @@ main() {
     log_info "LDAP listening on ldap://0.0.0.0:${LDAP_PORT} ldaps://0.0.0.0:${LDAPS_PORT}"
     log_info "Activity logs: /logs/slapd.log"
     
-    # Stop the background slapd
+    # Clean up generated LDIF files containing password hashes
+    log_step "Cleaning up generated LDIF files..."
+    cleanup_generated_ldif
+    log_success "Generated LDIF files cleaned up"
+    
+    # Sync database to disk before stopping (critical for MDB persistence)
+    log_step "Syncing database to disk..."
+    # Use slapcat to force MDB to sync to disk
+    slapcat -b "${LDAP_BASE_DN}" >/dev/null 2>&1 || true
+    # Sync filesystem buffers
+    sync
+    
+    # Stop the background slapd gracefully with TERM signal
     log_info "Stopping temporary slapd..."
     if kill -0 "$SLAPD_PID" 2>/dev/null; then
-        kill "$SLAPD_PID" 2>/dev/null || true
+        kill -TERM "$SLAPD_PID" 2>/dev/null || true
+        # Wait up to 10 seconds for graceful shutdown
+        for i in {1..10}; do
+            if ! kill -0 "$SLAPD_PID" 2>/dev/null; then
+                break
+            fi
+            sleep 1
+        done
+        # Force kill if still running
+        if kill -0 "$SLAPD_PID" 2>/dev/null; then
+            kill -9 "$SLAPD_PID" 2>/dev/null || true
+        fi
         wait "$SLAPD_PID" 2>/dev/null || true
     fi
+    # Ensure filesystem is synced after slapd stops
+    sync
     SLAPD_PID=""
     
     # Setup log rotation

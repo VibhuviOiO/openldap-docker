@@ -1,5 +1,14 @@
 # Add replication peer
 # Variables: RID, PEER, LDAP_ADMIN_DN, LDAP_ADMIN_PASSWORD, LDAP_BASE_DN
+#
+# SECURITY NOTE: This configuration stores the admin password in cleartext in
+# the cn=config database. This is a known limitation of the current simple
+# bind authentication method. Anyone with read access to cn=config can see
+# the replication credentials.
+#
+# Future improvement: Support SASL/EXTERNAL or TLS client certificate
+# authentication to eliminate cleartext credential storage.
+#
 dn: olcDatabase={2}mdb,cn=config
 changetype: modify
 add: olcSyncRepl

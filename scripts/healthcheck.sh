@@ -1,4 +1,6 @@
 #!/bin/bash
+set -eo pipefail
+
 # Health check script for OpenLDAP
 # Usage: healthcheck.sh [check_type]
 # check_type: basic (default), tls, or replication

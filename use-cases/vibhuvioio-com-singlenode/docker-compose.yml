@@ -1,0 +1,59 @@
+services:
+  openldap:
+    image: ghcr.io/vibhuvioio/openldap:latest
+    container_name: openldap-vibhuvioio
+    hostname: openldap-vibhuvioio
+    env_file:
+      - .env.vibhuvioio
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/openldap/slapd.d
+      - ./logs:/logs
+      - ./custom-schema:/custom-schema:ro
+      - ./sample/mahabharata_data.ldif:/data/mahabharata_data.ldif:ro
+      - ./init/init-data.sh:/docker-entrypoint-initdb.d/init-data.sh:ro
+    # Security: Drop all capabilities and add only required ones
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+    
+    # Grace period for clean shutdown
+    stop_grace_period: 30s
+    
+    restart: unless-stopped
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+    
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    networks:
+      - ldap-shared-network
+
+volumes:
+  ldap-data:
+  ldap-config:
+
+networks:
+  ldap-shared-network:
+    external: true

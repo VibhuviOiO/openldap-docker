@@ -1,15 +1,17 @@
 #!/bin/bash
 # Common utility functions for OpenLDAP startup
 
-set -e
+set -eo pipefail
 
-# Logging functions
-log_info() { echo "ℹ️  $1"; }
-log_success() { echo "✅ $1"; }
-log_warn() { echo "⚠️  $1"; }
-log_error() { echo "❌ $1"; }
-log_step() { echo "🔹 $1"; }
-log_header() { echo "🚀 $1"; }
+# Logging functions with structured prefixes for log aggregation compatibility
+# Format: [LEVEL] emoji message
+# Examples: [INFO] ℹ️  Starting, [ERROR] ❌ Failed
+log_info() { echo "[INFO]  ℹ️  $1"; }
+log_success() { echo "[OK]    ✅ $1"; }
+log_warn() { echo "[WARN]  ⚠️  $1"; }
+log_error() { echo "[ERROR] ❌ $1"; }
+log_step() { echo "[STEP]  🔹 $1"; }
+log_header() { echo "[START] 🚀 $1"; }
 
 # Retry logic for LDAP operations
 # Usage: ldap_retry <max_attempts> <delay_seconds> <ldap_command> [args...]

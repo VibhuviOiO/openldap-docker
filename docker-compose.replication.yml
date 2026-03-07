@@ -1,0 +1,199 @@
+# Multi-Master Replication Setup
+# 3-node OpenLDAP cluster with automatic replication
+#
+# Usage:
+#   docker-compose -f docker-compose.replication.yml up -d
+#
+# The nodes will replicate data between each other automatically.
+# Write to any node, read from any node.
+
+services:
+  openldap-node1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openldap-node1
+    hostname: openldap-node1
+    environment:
+      - LDAP_DOMAIN=example.com
+      - LDAP_ADMIN_PASSWORD=AdminPass123!
+      - LDAP_ORGANIZATION=Replication Test Cluster
+      
+      # Replication settings
+      - ENABLE_REPLICATION=true
+      - SERVER_ID=1
+      - REPLICATION_PEERS=openldap-node2,openldap-node3
+      
+      # Features
+      - ENABLE_MONITORING=true
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      - ldap-data-node1:/var/lib/ldap
+      - ldap-config-node1:/etc/openldap/slapd.d
+      - ./logs/node1:/logs
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+    stop_grace_period: 30s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+    
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    restart: unless-stopped
+    networks:
+      - ldap-replication-network
+
+  openldap-node2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openldap-node2
+    hostname: openldap-node2
+    environment:
+      - LDAP_DOMAIN=example.com
+      - LDAP_ADMIN_PASSWORD=AdminPass123!
+      - LDAP_ORGANIZATION=Replication Test Cluster
+      
+      # Replication settings
+      - ENABLE_REPLICATION=true
+      - SERVER_ID=2
+      - REPLICATION_PEERS=openldap-node1,openldap-node3
+      
+      # Features
+      - ENABLE_MONITORING=true
+    ports:
+      - "390:389"
+      - "637:636"
+    volumes:
+      - ldap-data-node2:/var/lib/ldap
+      - ldap-config-node2:/etc/openldap/slapd.d
+      - ./logs/node2:/logs
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+    stop_grace_period: 30s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+    
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    restart: unless-stopped
+    networks:
+      - ldap-replication-network
+    depends_on:
+      - openldap-node1
+
+  openldap-node3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openldap-node3
+    hostname: openldap-node3
+    environment:
+      - LDAP_DOMAIN=example.com
+      - LDAP_ADMIN_PASSWORD=AdminPass123!
+      - LDAP_ORGANIZATION=Replication Test Cluster
+      
+      # Replication settings
+      - ENABLE_REPLICATION=true
+      - SERVER_ID=3
+      - REPLICATION_PEERS=openldap-node1,openldap-node2
+      
+      # Features
+      - ENABLE_MONITORING=true
+    ports:
+      - "391:389"
+      - "638:636"
+    volumes:
+      - ldap-data-node3:/var/lib/ldap
+      - ldap-config-node3:/etc/openldap/slapd.d
+      - ./logs/node3:/logs
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+    stop_grace_period: 30s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+    
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    restart: unless-stopped
+    networks:
+      - ldap-replication-network
+    depends_on:
+      - openldap-node1
+
+volumes:
+  ldap-data-node1:
+  ldap-config-node1:
+  ldap-data-node2:
+  ldap-config-node2:
+  ldap-data-node3:
+  ldap-config-node3:
+
+networks:
+  ldap-replication-network:
+    driver: bridge

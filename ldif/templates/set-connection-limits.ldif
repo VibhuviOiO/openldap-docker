@@ -1,0 +1,9 @@
+# Set connection rate limiting to prevent DoS
+# Variables: CONN_MAX_PENDING, CONN_MAX_PENDING_AUTH
+dn: cn=config
+changetype: modify
+add: olcConnMaxPending
+olcConnMaxPending: {{CONN_MAX_PENDING}}
+-
+add: olcConnMaxPendingAuth
+olcConnMaxPendingAuth: {{CONN_MAX_PENDING_AUTH}}

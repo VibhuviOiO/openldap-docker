@@ -1,4 +1,11 @@
-FROM almalinux:9
+FROM almalinux:9.7
+
+# OCI image labels
+LABEL org.opencontainers.image.title="OpenLDAP"
+LABEL org.opencontainers.image.description="Production-ready OpenLDAP container with multi-master replication, TLS support, and enterprise features"
+LABEL org.opencontainers.image.source="https://github.com/vibhuvioio/openldap-docker"
+LABEL org.opencontainers.image.vendor="VibhuviOiO"
+LABEL org.opencontainers.image.licenses="MIT"
 
 # Install OpenLDAP packages (requires CRB repo)
 RUN dnf install -y dnf-plugins-core epel-release && \
@@ -48,6 +55,9 @@ HEALTHCHECK --interval=30s \
             --start-period=30s \
             --retries=3 \
     CMD /usr/local/bin/scripts/healthcheck.sh basic || exit 1
+
+# Signal for graceful shutdown
+STOPSIGNAL SIGTERM
 
 # Run as root (startup script will drop to ldap user)
 CMD ["/usr/local/bin/startup.sh"]

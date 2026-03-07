@@ -42,17 +42,55 @@ services:
       - /tmp
       - /var/run/openldap
     
+    # Security: Drop all capabilities and add only required ones
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+    
+    # Grace period for clean shutdown
+    stop_grace_period: 30s
+    
     # Health check built into image
     healthcheck:
-      test: ["/usr/local/bin/scripts/healthcheck.sh", "basic"]
+      test: ["CMD", "/usr/local/bin/scripts/healthcheck.sh", "basic"]
       interval: 30s
       timeout: 5s
       start_period: 30s
       retries: 3
     
     restart: unless-stopped
+    
+    networks:
+      - ldap-network
+    
+    # Resource limits for production stability
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+    
+    # Log rotation to prevent disk exhaustion
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   ldap-data:
   ldap-config:
   ldap-logs:
+
+# Custom network for service isolation
+networks:
+  ldap-network:
+    driver: bridge

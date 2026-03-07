@@ -9,7 +9,6 @@
 
 # Development and Testing Tools (not for production)
 dev-tools/
-test-use-cases/
 logs/
 audit-logs/
 *.log
@@ -35,10 +34,11 @@ backups/
 *.bak
 *.backup
 
-# Local environment
+# Local environment (ignore in root, allow in use-cases)
 .env
 .env.*
 !.env.example
+!use-cases/**/.env*
 
 # Build artifacts
 *.tar.gz

@@ -19,3 +19,8 @@ ou: People
 dn: ou=Group,{{LDAP_BASE_DN}}
 objectClass: organizationalUnit
 ou: Group
+
+dn: ou=Services,{{LDAP_BASE_DN}}
+objectClass: organizationalUnit
+ou: Services
+description: Service accounts and application bindings
