@@ -1,4 +1,4 @@
-FROM almalinux:9.7
+FROM almalinux:10.1
 
 # OCI image labels
 LABEL org.opencontainers.image.title="OpenLDAP"
