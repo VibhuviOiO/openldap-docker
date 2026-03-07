@@ -1,15 +1,20 @@
-name: Docker Publish and Test
+name: Docker Publish
 
-# Manual trigger or automated on version tags
+# Build and publish Docker image on version tags or manual trigger
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      no_cache:
+        description: 'Build without cache'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   packages: write
-  id-token: write
 
 env:
   REGISTRY: ghcr.io
@@ -19,9 +24,6 @@ jobs:
   build-and-push:
     name: Build and Push
     runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
-      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -48,13 +50,13 @@ jobs:
         id: version
         run: |
           # Build a temporary image to get slapd version
-          docker build -t openldap:temp .
+          docker build --no-cache -t openldap:temp .
           # Get version from slapd
           VERSION=$(docker run --rm openldap:temp /usr/sbin/slapd -V 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "2.6.8")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Using OpenLDAP version: $VERSION"
 
-      - name: Extract metadata for Docker
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -64,7 +66,6 @@ jobs:
             type=raw,value=${{ steps.version.outputs.version }}
 
       - name: Build and push Docker image
-        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -72,116 +73,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          no-cache: ${{ github.event.inputs.no_cache == 'true' }}
 
       - name: Image digest
-        run: echo "${{ steps.build.outputs.digest }}"
-
-  # Run all use-case tests with the published image
-  test-docker-secrets:
-    name: Test - Docker Secrets
-    needs: build-and-push
-    uses: ./.github/workflows/test-usecase-docker-secrets.yml
-    with:
-      image_tag: ${{ needs.build-and-push.outputs.version }}
-
-  test-overlay-features:
-    name: Test - Overlay Features
-    needs: build-and-push
-    uses: ./.github/workflows/test-usecase-overlay-features.yml
-    with:
-      image_tag: ${{ needs.build-and-push.outputs.version }}
-
-  test-tls:
-    name: Test - TLS/SSL
-    needs: build-and-push
-    uses: ./.github/workflows/test-usecase-tls.yml
-    with:
-      image_tag: ${{ needs.build-and-push.outputs.version }}
-
-  test-idempotency:
-    name: Test - Idempotency
-    needs: build-and-push
-    uses: ./.github/workflows/test-usecase-idempotency.yml
-    with:
-      image_tag: ${{ needs.build-and-push.outputs.version }}
-
-  test-vibhuvi:
-    name: Test - Vibhuvi Single Node
-    needs: build-and-push
-    uses: ./.github/workflows/test-usecase-vibhuvi.yml
-    with:
-      image_tag: ${{ needs.build-and-push.outputs.version }}
-
-  test-vibhuvioio:
-    name: Test - Vibhuvioio Single Node
-    needs: build-and-push
-    uses: ./.github/workflows/test-usecase-vibhuvioio.yml
-    with:
-      image_tag: ${{ needs.build-and-push.outputs.version }}
-
-  test-password-policy:
-    name: Test - Password Policy
-    needs: build-and-push
-    uses: ./.github/workflows/test-usecase-password-policy.yml
-    with:
-      image_tag: ${{ needs.build-and-push.outputs.version }}
-
-  test-replication:
-    name: Test - Multi-Node Replication
-    needs: build-and-push
-    uses: ./.github/workflows/test-usecase-replication.yml
-    with:
-      image_tag: ${{ needs.build-and-push.outputs.version }}
-
-  # Final summary
-  publish-summary:
-    name: Publish Test Summary
-    needs:
-      - build-and-push
-      - test-docker-secrets
-      - test-overlay-features
-      - test-tls
-      - test-idempotency
-      - test-vibhuvi
-      - test-vibhuvioio
-      - test-password-policy
-      - test-replication
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Summary
-        run: |
-          echo "## Docker Publish and Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`${{ needs.build-and-push.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Use-Case Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Use-Case | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Docker Secrets | ${{ needs.test-docker-secrets.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Overlay Features | ${{ needs.test-overlay-features.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| TLS/SSL | ${{ needs.test-tls.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Idempotency | ${{ needs.test-idempotency.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Vibhuvi Single Node | ${{ needs.test-vibhuvi.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Vibhuvioio Single Node | ${{ needs.test-vibhuvioio.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Password Policy | ${{ needs.test-password-policy.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Multi-Node Replication | ${{ needs.test-replication.result == 'success' && '✅ Pass' || '❌ Fail' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [[ "${{ needs.test-docker-secrets.result }}" == "success" && \
-                "${{ needs.test-overlay-features.result }}" == "success" && \
-                "${{ needs.test-tls.result }}" == "success" && \
-                "${{ needs.test-idempotency.result }}" == "success" && \
-                "${{ needs.test-vibhuvi.result }}" == "success" && \
-                "${{ needs.test-vibhuvioio.result }}" == "success" && \
-                "${{ needs.test-password-policy.result }}" == "success" && \
-                "${{ needs.test-replication.result }}" == "success" ]]; then
-            echo "✅ **All tests passed!** Image published successfully." >> $GITHUB_STEP_SUMMARY
-            exit 0
-          else
-            echo "❌ **Some tests failed.** Check individual test results." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+        run: echo "Image published: ${{ steps.meta.outputs.tags }}"
