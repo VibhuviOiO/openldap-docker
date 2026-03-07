@@ -30,13 +30,16 @@ jobs:
 
       - name: Wait for LDAP to be ready
         run: |
-          for i in $(seq 1 30); do
-            if docker exec ldap-test ldapsearch -x -H ldap://localhost -b "" -s base namingContexts 2>/dev/null | grep -q "namingContexts"; then
+          for i in $(seq 1 60); do
+            # Check if base domain exists (initialization complete)
+            if docker exec ldap-test ldapsearch -x -H ldap://localhost \
+                -D "cn=Manager,dc=test,dc=local" -w testpass \
+                -b "dc=test,dc=local" -s base "(objectClass=*)" dn 2>/dev/null | grep -q "dn:"; then
               echo "LDAP is ready"
               exit 0
             fi
-            echo "Waiting for LDAP... ($i/30)"
-            sleep 2
+            echo "Waiting for LDAP initialization... ($i/60)"
+            sleep 3
           done
           echo "LDAP failed to start"
           docker logs ldap-test

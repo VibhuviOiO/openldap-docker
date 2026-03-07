@@ -1,6 +1,6 @@
 services:
   openldap-node1:
-    image: openldap:local
+    image: ${LDAP_IMAGE:-openldap:local}
     container_name: openldap-oiocloud-node1
     hostname: openldap-oiocloud-node1
     env_file:
@@ -54,7 +54,7 @@ services:
       - ldap-shared-network
 
   openldap-node2:
-    image: openldap:local
+    image: ${LDAP_IMAGE:-openldap:local}
     container_name: openldap-oiocloud-node2
     hostname: openldap-oiocloud-node2
     env_file:
@@ -108,7 +108,7 @@ services:
       - openldap-node1
 
   openldap-node3:
-    image: openldap:local
+    image: ${LDAP_IMAGE:-openldap:local}
     container_name: openldap-oiocloud-node3
     hostname: openldap-oiocloud-node3
     env_file:
