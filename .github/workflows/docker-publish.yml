@@ -37,10 +37,10 @@ jobs:
       platforms: linux/amd64,linux/arm64
       ghcr-enabled: true
       dockerhub-enabled: true
-      dockerhub-username: ${{ vars.DOCKERHUB_USERNAME }}
+      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
       dockerhub-namespace: vibhuvioio
       quay-enabled: true
-      quay-username: ${{ vars.QUAY_USERNAME }}
+      quay-username: ${{ secrets.QUAY_USERNAME }}
       quay-namespace: vibhuvioio
       build-args: |
         OPENLDAP_VERSION=${{ needs.version.outputs.openldap-version }}
