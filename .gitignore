@@ -52,3 +52,4 @@ tests/local/logs/
 # Build artifacts
 *.tar.gz
 *.zip
+.secrets/
