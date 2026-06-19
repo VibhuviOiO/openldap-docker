@@ -37,9 +37,7 @@ jobs:
       platforms: linux/amd64,linux/arm64
       ghcr-enabled: true
       dockerhub-enabled: true
-      dockerhub-namespace: vibhuvioio
       quay-enabled: true
-      quay-namespace: vibhuvioio
       build-args: |
         OPENLDAP_VERSION=${{ needs.version.outputs.openldap-version }}
       tags: |
