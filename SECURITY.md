@@ -14,7 +14,7 @@
 ### Container Image
 
 ```
-ghcr.io/vibhuvioio/openldap:latest
+vibhuvioio/openldap:latest
 ```
 
 ### Verifying Image Signature
@@ -23,7 +23,7 @@ ghcr.io/vibhuvioio/openldap:latest
 cosign verify \
   --certificate-identity-regexp="https://github.com/vibhuvioio/openldap-docker/.github/workflows/docker-publish.yml@refs/tags/v*" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/vibhuvioio/openldap:latest
+  vibhuvioio/openldap:latest
 ```
 
 ### Viewing Vulnerability Reports

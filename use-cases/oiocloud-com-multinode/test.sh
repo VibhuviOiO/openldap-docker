@@ -6,7 +6,7 @@
 set -e
 
 IMAGE_TAG="${1:-latest}"
-IMAGE="ghcr.io/vibhuvioio/openldap:${IMAGE_TAG}"
+IMAGE="vibhuvioio/openldap:${IMAGE_TAG}"
 CONTAINER_NAME="openldap-replication-test"
 COMPOSE_FILE="docker-compose.yml"
 

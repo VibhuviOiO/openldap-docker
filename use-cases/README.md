@@ -28,8 +28,8 @@ done
 ## Docker Image
 
 The GitHub Action will build and publish to:
-- `ghcr.io/vibhuvioio/openldap:latest`
-- `ghcr.io/vibhuvioio/openldap:2.6.8` (OpenLDAP version)
+- `vibhuvioio/openldap:latest`
+- `vibhuvioio/openldap:2.6.8` (OpenLDAP version)
 
 ## Publishing New Image
 
