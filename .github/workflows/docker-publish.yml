@@ -1,72 +1,50 @@
-name: Docker Publish
+name: Publish OpenLDAP
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: read
   packages: write
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: openldap
+  id-token: write
 
 jobs:
-  build-and-push:
-    name: Build & Push
+  version:
+    name: Read OpenLDAP Version
     runs-on: ubuntu-latest
+    outputs:
+      openldap-version: ${{ steps.version.outputs.openldap-version }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set lowercase organization name
-        id: lowercase
-        run: |
-          echo "org_lower=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
-      - name: Extract OpenLDAP version
+      - name: Read VERSION file
         id: version
         run: |
-          docker build --no-cache -t openldap:temp .
-          VERSION=$(docker run --rm openldap:temp /usr/sbin/slapd -V 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "2.6.8")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Using OpenLDAP version: $VERSION"
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "openldap-version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "OpenLDAP version: ${VERSION}"
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
-        with:
-          images: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest
-            type=raw,value=${{ steps.version.outputs.version }}
-
-      - name: Build and push Docker image
-        id: build
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          no-cache: true
-
-      - name: Summary
-        run: |
-          echo "### Image Published" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Digest:** ${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+  publish:
+    name: Build & Push
+    needs: version
+    uses: VibhuviOiO/github-engineering/.github/workflows/container-publish.yml@main
+    with:
+      image-name: openldap
+      platforms: linux/amd64,linux/arm64
+      ghcr-enabled: true
+      dockerhub-enabled: true
+      dockerhub-namespace: vibhuvioio
+      quay-enabled: true
+      quay-namespace: vibhuvioio
+      build-args: |
+        OPENLDAP_VERSION=${{ needs.version.outputs.openldap-version }}
+      tags: |
+        type=raw,value=latest
+        type=raw,value=${{ needs.version.outputs.openldap-version }}
+        type=semver,pattern={{version}}
+        type=sha,prefix=
+    secrets: inherit
