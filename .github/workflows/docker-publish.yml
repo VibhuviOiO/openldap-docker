@@ -37,8 +37,6 @@ jobs:
       platforms: linux/amd64,linux/arm64
       ghcr-enabled: true
       dockerhub-enabled: true
-      quay-enabled: true
-      quay-continue-on-error: true
       build-args: |
         OPENLDAP_VERSION=${{ needs.version.outputs.openldap-version }}
       tags: |
