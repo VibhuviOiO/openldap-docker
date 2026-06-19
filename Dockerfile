@@ -1,13 +1,12 @@
 FROM almalinux:9.7
-
-# OCI image labels
+ARG OPENLDAP_VERSION=""
 LABEL org.opencontainers.image.title="OpenLDAP"
 LABEL org.opencontainers.image.description="Production-ready OpenLDAP container with multi-master replication, TLS support, and enterprise features"
 LABEL org.opencontainers.image.source="https://github.com/vibhuvioio/openldap-docker"
 LABEL org.opencontainers.image.vendor="VibhuviOiO"
 LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.version="${OPENLDAP_VERSION}"
 
-# Install OpenLDAP packages (requires CRB repo)
 RUN dnf install -y dnf-plugins-core epel-release && \
     dnf config-manager --set-enabled crb && \
     dnf install -y --nodocs \
@@ -17,9 +16,6 @@ RUN dnf install -y dnf-plugins-core epel-release && \
         logrotate \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*
-
-# Create directories with proper permissions
-# Note: /tmp/ldap-init stays owned by root for no-new-privileges support
 RUN mkdir -p \
         /var/lib/ldap \
         /etc/openldap/slapd.d \
@@ -41,26 +37,14 @@ RUN mkdir -p \
     && chmod 750 /var/lib/ldap \
     && chmod 755 /etc/openldap/slapd.d \
     && chmod 755 /usr/local/bin/ldif/templates /usr/local/bin/ldif/generated /tmp/ldap-init /tmp/ldap-init/ldif
-
-# Copy LDIF templates (read-only, owned by root)
 COPY --chown=root:root --chmod=644 ldif/templates/*.ldif /usr/local/bin/ldif/templates/
-
-# Copy scripts (owned by root, executable)
 COPY --chown=root:root --chmod=755 scripts/*.sh /usr/local/bin/scripts/
 COPY --chown=root:root --chmod=755 startup.sh /usr/local/bin/
-
-# Expose LDAP ports
 EXPOSE 389 636
-
-# Health check (runs as root, but script switches to ldap)
 HEALTHCHECK --interval=30s \
             --timeout=5s \
             --start-period=30s \
             --retries=3 \
     CMD /usr/local/bin/scripts/healthcheck.sh basic || exit 1
-
-# Signal for graceful shutdown
 STOPSIGNAL SIGTERM
-
-# Run as root (startup script will drop to ldap user)
 CMD ["/usr/local/bin/startup.sh"]
