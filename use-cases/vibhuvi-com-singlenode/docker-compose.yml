@@ -13,7 +13,7 @@ services:
       - ldap-config:/etc/openldap/slapd.d
       - ./logs:/logs
       - ./custom-schema:/custom-schema:ro
-      - ./sample/employee_data_global.ldif:/data/employee_data_global.ldif:ro
+      - ./init/employee_data_global.ldif:/data/employee_data_global.ldif:ro
       - ./init/init-data.sh:/docker-entrypoint-initdb.d/init-data.sh:ro
     # Security: Drop all capabilities and add only required ones
     security_opt:
