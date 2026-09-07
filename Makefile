@@ -69,30 +69,12 @@ test:
 		|| (echo "$(RED)✗ Tests failed$(RESET)" && exit 1)
 
 ## test-all: Run all integration tests
+# NOTE: Integration use-cases are maintained in the separate openldap-usecases repository.
+# Run them from the sibling directory (e.g., ../openldap-usecases/<use-case>/test.sh).
 test-all:
-	@echo "$(BLUE)Running integration test suite...$(RESET)"
-	@echo "$(YELLOW)1. Testing overlay features...$(RESET)"
-	@cd use-cases/overlay-features && docker-compose up -d && sleep 15
-	@docker logs openldap-overlays 2>&1 | grep -q "All overlay tests PASSED" \
-		&& echo "$(GREEN)✓ Overlay tests passed$(RESET)" \
-		|| (echo "$(RED)✗ Overlay tests failed$(RESET)" && exit 1)
-	@cd use-cases/overlay-features && docker-compose down -v
-	@echo "$(YELLOW)2. Testing TLS...$(RESET)"
-	@cd use-cases/tls-enabled && docker-compose up -d && sleep 10
-	@LDAPTLS_REQCERT=never ldapsearch -x -H ldaps://localhost:636 \
-		-D "cn=Manager,dc=example,dc=com" -w "AdminPass123!" \
-		-b "dc=example,dc=com" -s base >/dev/null 2>&1 \
-		&& echo "$(GREEN)✓ TLS tests passed$(RESET)" \
-		|| (echo "$(RED)✗ TLS tests failed$(RESET)" && exit 1)
-	@cd use-cases/tls-enabled && docker-compose down -v
-	@echo "$(YELLOW)3. Testing idempotency...$(RESET)"
-	@cd use-cases/idempotency-test && docker-compose up -d && sleep 10
-	@docker restart openldap-idempotency && sleep 10
-	@docker logs openldap-idempotency 2>&1 | grep -q "already configured" \
-		&& echo "$(GREEN)✓ Idempotency tests passed$(RESET)" \
-		|| (echo "$(RED)✗ Idempotency tests failed$(RESET)" && exit 1)
-	@cd use-cases/idempotency-test && docker-compose down -v
-	@echo "$(GREEN)✓ All integration tests passed!$(RESET)"
+	@echo "$(YELLOW)Integration use-cases are maintained in the openldap-usecases repository.$(RESET)"
+	@echo "Run individual tests from ../openldap-usecases/<use-case>/ (e.g. ./test.sh)."
+	@exit 0
 
 ## clean: Remove containers, volumes, and images
 clean: stop
@@ -102,15 +84,11 @@ clean: stop
 	@echo "$(GREEN)✓ Cleanup complete$(RESET)"
 
 ## clean-all: Clean all use-case containers and volumes
+# NOTE: Use-cases are maintained in the separate openldap-usecases repository.
 clean-all: clean
-	@echo "$(BLUE)Cleaning all use-cases...$(RESET)"
-	@for dir in use-cases/*/; do \
-		if [ -f "$$dir/docker-compose.yml" ]; then \
-			echo "Cleaning $$dir..."; \
-			(cd "$$dir" && docker-compose down -v 2>/dev/null) || true; \
-		fi \
-	done
-	@echo "$(GREEN)✓ All use-cases cleaned$(RESET)"
+	@echo "$(YELLOW)Use-case cleanup is handled in the openldap-usecases repository.$(RESET)"
+	@echo "Use docker compose down -v in ../openldap-usecases/<use-case>/ as needed."
+	@exit 0
 
 ## lint: Run all linters (hadolint, shellcheck)
 lint:
@@ -121,17 +99,11 @@ lint:
 	@which shellcheck >/dev/null 2>&1 && shellcheck scripts/*.sh || echo "$(YELLOW)shellcheck not installed, skipping$(RESET)"
 	@echo "$(GREEN)✓ Linting complete$(RESET)"
 
-## validate: Validate docker-compose files
+## validate: Validate root docker-compose file
 validate:
 	@echo "$(BLUE)Validating docker-compose files...$(RESET)"
 	@docker-compose config >/dev/null 2>&1 && echo "$(GREEN)✓ Root compose valid$(RESET)" || echo "$(RED)✗ Root compose invalid$(RESET)"
-	@for dir in use-cases/*/; do \
-		if [ -f "$$dir/docker-compose.yml" ]; then \
-			docker-compose -f "$$dir/docker-compose.yml" config >/dev/null 2>&1 \
-			&& echo "$(GREEN)✓ $$dir valid$(RESET)" \
-			|| echo "$(RED)✗ $$dir invalid$(RESET)"; \
-		fi \
-	done
+	@echo "$(YELLOW)Use-case compose files are validated in the sibling openldap-usecases repository.$(RESET)"
 
 ## backup: Backup LDAP data to backup/ directory
 backup:

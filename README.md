@@ -195,7 +195,7 @@ The integration test suite validates:
 4. **Idempotency** — Restart without errors, data persistence
 5. **Docker Secrets** — Password loading from secret files
 
-Run them locally from the `use-cases/` directory.
+Integration use-cases are maintained in the sibling [`openldap-usecases`](https://github.com/VibhuviOiO/openldap-usecases) repository.
 
 ## Overlays Guide
 
@@ -222,20 +222,11 @@ environment:
 ```
 Enforces: min 8 chars, 5 history, lockout after 5 failures
 
-## Use Cases
+## Use-Cases
 
-Example deployments for different scenarios:
+Hands-on use-cases and integration scenarios are maintained separately in the sibling [`openldap-usecases`](https://github.com/VibhuviOiO/openldap-usecases) repository. They cover single-node deployments, multi-master replication, overlays, TLS, Docker secrets, idempotency, and password policy testing.
 
-| Use Case | Description |
-|----------|-------------|
-| [`docker-secrets`](use-cases/docker-secrets/) | Secure password management using Docker secrets instead of plaintext environment variables |
-| [`overlay-features`](use-cases/overlay-features/) | Integration test for memberOf, password policy, and audit log overlays |
-| [`tls-enabled`](use-cases/tls-enabled/) | Integration test for TLS/SSL with StartTLS and LDAPS |
-| [`idempotency-test`](use-cases/idempotency-test/) | Integration test for restart idempotency and data persistence |
-| [`vibhuvi-com-singlenode`](use-cases/vibhuvi-com-singlenode/) | Single-node deployment example |
-| [`vibhuvioio-com-singlenode`](use-cases/vibhuvioio-com-singlenode/) | Alternative single-node configuration |
-| [`oiocloud-com-multinode`](use-cases/oiocloud-com-multinode/) | 3-node multi-master replication cluster |
-| [`password-policy-test`](use-cases/password-policy-test/) | Password policy testing environment |
+Clone it alongside this repository and run tests from `../openldap-usecases/<use-case>/`.
 
 ## Documentation
 
