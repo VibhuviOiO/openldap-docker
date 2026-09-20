@@ -80,9 +80,12 @@ user_has_memberof() {
 # Predicate: cn=config contains a matching attribute value.
 # shellcheck disable=SC2329
 cn_config_has() {
-    local c=$1 filter=$2 needle=$3
-    docker exec "$c" ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "$filter" 2>/dev/null \
-        | grep -q "$needle"
+    # $2 is an ATTRIBUTE list, not a filter. Passing a bare attribute name as the
+    # filter argument makes ldapsearch reject it as an invalid filter, which made
+    # these assertions fail unconditionally.
+    local c=$1 attrs=$2 needle=$3
+    docker exec "$c" ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "$attrs" 2>/dev/null \
+        | grep -qi "$needle"
 }
 
 # Wait until the container reports healthy, or fail after ~120s.
@@ -159,7 +162,7 @@ scenario_defaults_acl() {
     done
 
     # Non-root users are truncated at the size limit; the config must say so.
-    if eventually 5 cn_config_has "$c" "(olcLimits=*)" "olcLimits:"; then
+    if eventually 5 cn_config_has "$c" olcLimits "olcLimits:"; then
         pass "query limits are configured"
     else
         fail "query limits not found in cn=config"
@@ -278,17 +281,17 @@ scenario_tls() {
     # The certificate AND the CA must both be configured. Before the LDIF fix,
     # setting LDAP_TLS_CA produced a malformed record and TLS was silently never
     # applied while still logging success.
-    if eventually 5 cn_config_has "$c" "olcTLSCertificateFile" "olcTLSCertificateFile:"; then
+    if eventually 5 cn_config_has "$c" olcTLSCertificateFile "olcTLSCertificateFile:"; then
         pass "olcTLSCertificateFile applied"
     else
         fail "olcTLSCertificateFile was NOT applied (the TLS LDIF failure mode)"
     fi
-    if eventually 5 cn_config_has "$c" "olcTLSCACertificateFile" "olcTLSCACertificateFile:"; then
+    if eventually 5 cn_config_has "$c" olcTLSCACertificateFile "olcTLSCACertificateFile:"; then
         pass "olcTLSCACertificateFile applied (CA path works)"
     else
         fail "olcTLSCACertificateFile was NOT applied"
     fi
-    if eventually 5 cn_config_has "$c" "olcTLSProtocolMin" "olcTLSProtocolMin: 3.3"; then
+    if eventually 5 cn_config_has "$c" olcTLSProtocolMin "olcTLSProtocolMin: 3.3"; then
         pass "olcTLSProtocolMin is 3.3 (TLS 1.2 floor)"
     else
         fail "olcTLSProtocolMin is not set to 3.3"

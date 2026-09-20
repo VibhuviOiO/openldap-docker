@@ -135,8 +135,12 @@ check_replication() {
     fi
 
     # syncprov must be loaded, otherwise nothing is a provider.
-    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcOverlay=syncprov)" olcOverlay 2>/dev/null \
-            | grep -q "olcOverlay: syncprov"; then
+    # Assert on the returned DN, not on the olcOverlay value: slapd stores that
+    # value with its ordering prefix, i.e. "olcOverlay: {0}syncprov". Grepping
+    # for "olcOverlay: syncprov" never matched, so this reported a healthy
+    # provider as unconfigured.
+    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcOverlay=syncprov)" dn 2>/dev/null \
+            | grep -q "^dn:"; then
         echo "FAILED: syncprov overlay is not configured"
         return 1
     fi
@@ -146,30 +150,50 @@ check_replication() {
         return 1
     fi
 
-    # contextCSN is the replication state indicator. A node that never converged
-    # has none. The previous version returned OK in that case, so a node serving
-    # stale data reported healthy.
+    # Peers must actually be configured.
+    local peers
+    # Count returned DNs rather than matching the attribute name. slapd reports
+    # this attribute as "olcSyncrepl" (lowercase r) with an ordering prefix on
+    # the value, i.e. "olcSyncrepl: {0}rid=101 ...". Matching the value string
+    # case-sensitively never worked. Filter attribute names are case-insensitive,
+    # so the filter itself is fine.
+    peers=$(ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcSyncrepl=*)" dn 2>/dev/null \
+        | grep -c "^dn:" || true)
+    if [ "$peers" -eq 0 ]; then
+        echo "FAILED: ENABLE_REPLICATION=true but no olcSyncRepl statements are configured"
+        return 1
+    fi
+
+    # contextCSN is the replication state indicator.
     local csn
     csn=$(ldapsearch -Y EXTERNAL -H ldapi:/// -b "$base_dn" -s base contextCSN 2>/dev/null \
         | grep -c "^contextCSN:" || true)
     if [ "$csn" -gt 0 ]; then
-        echo "OK"
+        echo "OK (${csn} contextCSN value(s), ${peers} peer(s))"
         return 0
     fi
 
-    # No contextCSN yet. That is legitimate for a freshly created cluster with no
-    # writes, but not for a directory that already holds entries.
-    local entries
-    entries=$(ldapsearch -Y EXTERNAL -H ldapi:/// -b "$base_dn" -s sub -z 2 "(objectClass=*)" dn 2>/dev/null \
-        | grep -c "^dn:" || true)
-    # The suffix entry itself always matches, so >1 means real data is present.
-    if [ "$entries" -gt 1 ]; then
-        echo "FAILED: ${entries} entries below ${base_dn} but no contextCSN has been established"
-        return 1
+    # No contextCSN yet. That is legitimate on a freshly initialised node: the
+    # base domain is written before the syncprov overlay is loaded, so nothing
+    # has produced a CSN yet. It is NOT legitimate on a node that has been
+    # running well past startup - that is the "never converged, serves stale
+    # data, reports healthy" case.
+    #
+    # So apply a grace window measured from the readiness marker rather than
+    # failing immediately, which previously made every fresh replication node
+    # report unhealthy forever.
+    local grace="${REPLICATION_CSN_GRACE:-300}"
+    local age=0
+    if [ -f "$READY_FILE" ]; then
+        age=$(( $(date +%s) - $(stat -c %Y "$READY_FILE" 2>/dev/null || echo 0) ))
+    fi
+    if [ "$age" -lt "$grace" ]; then
+        echo "OK (no contextCSN yet; ${age}s of uptime, within the ${grace}s grace window)"
+        return 0
     fi
 
-    echo "OK (no contextCSN yet, database is empty)"
-    return 0
+    echo "FAILED: no contextCSN after ${age}s of uptime - this node has not converged"
+    return 1
 }
 
 # --- main ---------------------------------------------------------------------

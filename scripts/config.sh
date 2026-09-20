@@ -136,7 +136,11 @@ configure_memberof() {
     log_header "Configuring memberOf overlay..."
     
     # Check if memberOf overlay already exists
-    if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcOverlay=memberof)" 2>/dev/null | grep -q "dn: olcOverlay=memberof"; then
+    # Filter on olcOverlay and assert on the returned DN. slapd stores the value
+    # with an ordering prefix whose number depends on the order overlays were
+    # added ("olcOverlay={1}memberof"), so matching a bare name or a hardcoded
+    # "{0}" never works and the overlay was re-added on every restart.
+    if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcOverlay=memberof)" dn 2>/dev/null | grep -q "^dn:"; then
         log_info "memberOf overlay already configured"
         return 0
     fi
@@ -313,7 +317,7 @@ configure_audit_log() {
     fi
     
     # Add auditlog overlay
-    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "olcDatabase={2}mdb,cn=config" 2>/dev/null | grep -q "olcOverlay=auditlog"; then
+    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcOverlay=auditlog)" dn 2>/dev/null | grep -q "^dn:"; then
         log_step "Adding auditlog overlay..."
         local overlay_ldif=$(get_ldif_path "configure-auditlog")
         cp "$LDIF_TEMPLATE_DIR/configure-auditlog.ldif" "$overlay_ldif"
@@ -357,7 +361,7 @@ configure_password_policy() {
     fi
     
     # Add ppolicy overlay
-    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "olcDatabase={2}mdb,cn=config" 2>/dev/null | grep -q "olcOverlay=ppolicy"; then
+    if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcOverlay=ppolicy)" dn 2>/dev/null | grep -q "^dn:"; then
         log_step "Adding ppolicy overlay..."
         local overlay_ldif=$(process_ldif_template "configure-ppolicy" \
             "LDAP_BASE_DN=${LDAP_BASE_DN}")

@@ -175,7 +175,7 @@ load_syncprov_module() {
 # Add syncprov overlay
 add_syncprov_overlay() {
     # Check if already added
-    if ldapsearch -Y EXTERNAL -H ldapi:/// -b "olcDatabase={2}mdb,cn=config" 2>/dev/null | grep -q "olcOverlay={0}syncprov"; then
+    if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcOverlay=syncprov)" dn 2>/dev/null | grep -q "^dn:"; then
         log_info "Syncprov overlay already configured"
         return 0
     fi

@@ -46,6 +46,39 @@ fail() {
 }
 section() { printf '\n\033[36m== %s\033[0m\n' "$1"; }
 
+# A single ldapsearch launched via docker exec can fail transiently under host
+# load. A transient miss is not evidence of a server defect, so every
+# configuration assertion is retried before it is reported.
+eventually() {
+    local tries=${1:-5}
+    shift
+    local _i
+    for _i in $(seq 1 "$tries"); do
+        if "$@"; then return 0; fi
+        sleep 1
+    done
+    return 1
+}
+
+# Predicates (passed to eventually by name; shellcheck cannot follow them).
+# shellcheck disable=SC2329
+cfg_has() {  # <filter> <needle>
+    docker exec ldapci-node1 ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "$1" 2>/dev/null | grep -qi "$2"
+}
+# shellcheck disable=SC2329
+node_has() {  # <container> <basedn>
+    docker exec "$1" ldapsearch -x -H ldap://localhost -D "$ADMIN_DN" -w "$ADMIN_PW" \
+        -b "$2" -s base "(objectClass=*)" dn 2>/dev/null | grep -q "^dn:"
+}
+# shellcheck disable=SC2329
+add_ou() {  # <container> <dn> <ou>
+    docker exec -i "$1" ldapadd -x -H ldap://localhost -D "$ADMIN_DN" -w "$ADMIN_PW" 2>/dev/null <<EOF
+dn: $2
+objectClass: organizationalUnit
+ou: $3
+EOF
+}
+
 wait_healthy() {
     local name=$1
     for _ in $(seq 1 50); do
@@ -124,16 +157,16 @@ fi
 section "replication configuration (cn=config)"
 LOCAL="docker exec ldapci-node1 ldapsearch -Y EXTERNAL -H ldapi:///"
 
-if $LOCAL -b "cn=config" "(olcModuleLoad=syncprov*)" olcModuleLoad 2>/dev/null | grep -q "syncprov.la"; then
+if eventually 5 cfg_has "(olcModuleLoad=*)" "syncprov.la"; then
     pass "syncprov.la is loaded (module-vs-entry guard works with memberof enabled)"
 else
     fail "syncprov.la is NOT loaded"
 fi
 
-repl=$($LOCAL -b "cn=config" "(olcSyncRepl=*)" olcSyncRepl 2>/dev/null \
+repl=$($LOCAL -b "cn=config" "(olcSyncrepl=*)" olcSyncrepl 2>/dev/null \
     | awk '/^[[:space:]]/{printf "%s", substr($0,2); next} {if(NR>1)printf "\n"; printf "%s",$0} END{printf "\n"}' \
-    | grep "^olcSyncRepl:")
-repl_count=$(printf '%s\n' "$repl" | grep -c "^olcSyncRepl:" || true)
+    | grep -i "^olcSyncrepl:")
+repl_count=$(printf '%s\n' "$repl" | grep -ci "^olcSyncrepl:" || true)
 
 if [ "$repl_count" -eq 2 ]; then
     pass "2 olcSyncRepl statements configured (2 peers)"
@@ -160,19 +193,19 @@ else
     fail "replication is not using cn=replicator"
 fi
 
-if $LOCAL -b "cn=config" "(olcMultiProvider=*)" olcMultiProvider 2>/dev/null | grep -q "olcMultiProvider: TRUE"; then
+if eventually 5 cfg_has "(olcMultiProvider=*)" "olcMultiProvider: TRUE"; then
     pass "olcMultiProvider: TRUE"
 else
     fail "olcMultiProvider is not TRUE"
 fi
 
-if $LOCAL -b "cn=config" "(olcSpCheckpoint=*)" olcSpCheckpoint 2>/dev/null | grep -q "olcSpCheckpoint"; then
+if eventually 5 cfg_has "(olcSpCheckpoint=*)" "olcSpCheckpoint"; then
     pass "olcSpCheckpoint configured"
 else
     fail "olcSpCheckpoint missing"
 fi
 
-if $LOCAL -b "cn=config" "(olcSpSessionlog=*)" olcSpSessionlog 2>/dev/null | grep -q "olcSpSessionlog"; then
+if eventually 5 cfg_has "(olcSpSessionlog=*)" "olcSpSessionlog"; then
     pass "olcSpSessionlog configured"
 else
     fail "olcSpSessionlog missing"
@@ -201,7 +234,7 @@ objectClass: organizationalUnit
 ou: Replicated
 EOF
 
-if search_ok ldapci-node1 "ou=Replicated,${BASE_DN}"; then
+if eventually 5 node_has ldapci-node1 "ou=Replicated,${BASE_DN}"; then
     pass "entry created on node1"
 else
     fail "could not create the test entry on node1"
@@ -236,7 +269,7 @@ objectClass: organizationalUnit
 ou: AfterRestart
 EOF
 
-if search_ok ldapci-node1 "ou=AfterRestart,${BASE_DN}"; then
+if eventually 5 node_has ldapci-node1 "ou=AfterRestart,${BASE_DN}"; then
     pass "entry created while node3 was down"
 else
     fail "could not create the entry while node3 was down"

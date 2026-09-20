@@ -239,24 +239,6 @@ write_runtime_env() {
     log_info "Runtime values written to ${RUNTIME_ENV}"
 }
 
-# Return 0 if something is LISTENing on the given TCP port (hex, e.g. :0185).
-#
-# /proc/net/tcp lists every socket, including connections left in TIME_WAIT
-# whose LOCAL port is the one we care about. TIME_WAIT does not prevent a new
-# bind (slapd sets SO_REUSEADDR), so treating it as "port still in use" made
-# every cold start wait the full timeout - 60s of dead time.
-has_listener() {
-    local port_hex=$1
-    local f
-    for f in /proc/net/tcp /proc/net/tcp6; do
-        [ -r "$f" ] || continue
-        if awk -v p="$port_hex" '$2 ~ p && $4 == "0A" { found = 1 } END { exit !found }' "$f" 2>/dev/null; then
-            return 0
-        fi
-    done
-    return 1
-}
-
 # Confirm slapd is serving and publish the readiness marker.
 #
 # healthcheck.sh requires this marker, so a container that fails during
@@ -321,7 +303,7 @@ main() {
     if ! /usr/sbin/slapd -h "ldap:/// ldaps:/// ldapi:///" -d 1 -Tt 2>&1; then
         log_warn "slaptest indicates potential issues, but continuing..."
     fi
-    /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d 256 &
+    /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d "$LDAP_LOG_LEVEL" &
     SLAPD_PID=$!
     
     # Wait for slapd to be ready
@@ -421,11 +403,9 @@ main() {
         done
     fi
     
+    # Run any provided init scripts against the running slapd.
     if [ "$has_init_scripts" = "true" ]; then
-        # Init scripts present - keep slapd running and execute them
-        log_info "Init scripts found, keeping slapd running..."
-        
-        # Run init scripts against the already running slapd
+        log_info "Init scripts found, running them against the running slapd..."
         log_header "Running initialization scripts..."
         for script in /docker-entrypoint-initdb.d/*.sh; do
             if [ -f "$script" ]; then
@@ -438,84 +418,30 @@ main() {
             fi
         done
         log_success "All initialization scripts completed"
-        
-        # Sync database to disk
-        log_step "Syncing database to disk..."
-        # NOTE: a "slapcat -b <suffix> >/dev/null" used to run here as a flush.
-        # It reads the entire database on every start, so startup cost scaled
-        # with directory size for no benefit: olcSpCheckpoint (see
-        # add-syncprov-overlay.ldif) persists the contextCSN, and a clean
-        # SIGTERM shutdown flushes LMDB.
-        sync
-        
-        # Keep slapd running with proper signal handling
-        if ! mark_ready; then
-            exit 1
-        fi
-        log_info "Keeping slapd running in foreground..."
-        wait $SLAPD_PID
-    else
-        # No init scripts - stop slapd and restart cleanly
-        log_step "Syncing database to disk..."
-        # NOTE: a "slapcat -b <suffix> >/dev/null" used to run here as a flush.
-        # It reads the entire database on every start, so startup cost scaled
-        # with directory size for no benefit: olcSpCheckpoint (see
-        # add-syncprov-overlay.ldif) persists the contextCSN, and a clean
-        # SIGTERM shutdown flushes LMDB.
-        sync
-        
-        log_info "Stopping temporary slapd..."
-        if kill -0 "$SLAPD_PID" 2>/dev/null; then
-            kill -TERM "$SLAPD_PID" 2>/dev/null || true
-            local wait_count=0
-            while [ "$wait_count" -lt 10 ]; do
-                if ! kill -0 "$SLAPD_PID" 2>/dev/null; then
-                    break
-                fi
-                sleep 1
-                wait_count=$((wait_count + 1))
-            done
-            if kill -0 "$SLAPD_PID" 2>/dev/null; then
-                kill -9 "$SLAPD_PID" 2>/dev/null || true
-            fi
-            wait "$SLAPD_PID" 2>/dev/null || true
-        fi
-        sync
-        SLAPD_PID=""
-        
-        log_info "Waiting for port ${LDAP_PORT} to be released..."
-        # Poll instead of sleeping a flat 30s and then another 10s. Only a
-        # LISTEN socket blocks a rebind - see has_listener().
-        local port_hex
-        port_hex=$(printf ':%04X' "$LDAP_PORT")
-        local port_wait=0
-        while [ $port_wait -lt 30 ]; do
-            if ! has_listener "$port_hex"; then
-                break
-            fi
-            sleep 1
-            port_wait=$((port_wait + 1))
-        done
-        if [ $port_wait -ge 30 ]; then
-            log_warn "Port ${LDAP_PORT} is still LISTENing after 30s; starting anyway."
-        fi
-        
-        log_info "Starting slapd in foreground mode..."
-        # Log to stdout/stderr rather than /logs/slapd.log so the container
-        # runtime actually receives slapd's output (docker logs, the compose
-        # json-file driver, Loki/ELK/CloudWatch). Writing to a file inside the
-        # container made the compose "logging:" block a no-op and depended on
-        # logrotate, which is installed and configured but never executed -
-        # there is no cron or systemd in this image.
-        /usr/sbin/slapd -u ldap -g ldap -h "ldap:/// ldaps:/// ldapi:///" -d "$LDAP_LOG_LEVEL" &
-        SLAPD_PID=$!
-        
-        if ! mark_ready; then
-            exit 1
-        fi
-        wait $SLAPD_PID
     fi
+
+    log_step "Syncing database to disk..."
+    sync
+
+    # slapd is deliberately NOT restarted here.
+    #
+    # The previous implementation stopped the configuration-time slapd and
+    # started a second one, which re-read cn=config from /etc/openldap/slapd.d.
+    # slapd flushes configuration changes to disk asynchronously, so the last
+    # changes - syncprov module, mirror mode, olcSpCheckpoint, olcSpSessionlog -
+    # were intermittently NOT on disk when the second process read them. The
+    # observable symptom was a node that started healthy but had no replication
+    # configured, varying from run to run.
+    #
+    # One slapd process now serves the whole container lifetime, so nothing has
+    # to survive a process restart.
+    if ! mark_ready; then
+        exit 1
+    fi
+    log_info "slapd is serving; waiting for signals."
+    wait $SLAPD_PID
 }
+
 # Logging and log rotation
 #
 # slapd logs to stdout/stderr (see the foreground start in main), so rotation

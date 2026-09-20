@@ -131,7 +131,9 @@ else
 fi
 
 # exactly one syncprov overlay
-syncprov_overlays=$(local_search -b "cn=config" "(olcOverlay=syncprov)" olcOverlay 2>/dev/null | grep -c "^olcOverlay: syncprov" || true)
+# Count matching DNs. slapd stores the olcOverlay value with its ordering
+# prefix ("olcOverlay: {0}syncprov"), so matching the value string never worked.
+syncprov_overlays=$(local_search -b "cn=config" "(olcOverlay=syncprov)" dn 2>/dev/null | grep -c "^dn:" || true)
 if [ "$syncprov_overlays" -eq 1 ]; then
     pass "exactly one syncprov overlay (${syncprov_overlays})"
 elif [ "$syncprov_overlays" -eq 0 ]; then
@@ -156,8 +158,8 @@ else
 fi
 
 # olcSyncRepl statements
-REPLS=$(local_search -b "cn=config" "(olcSyncRepl=*)" olcSyncRepl 2>/dev/null | unfold | grep "^olcSyncRepl:" || true)
-repl_total=$(printf '%s\n' "$REPLS" | grep -c "^olcSyncRepl:" || true)
+REPLS=$(local_search -b "cn=config" "(olcSyncrepl=*)" olcSyncRepl 2>/dev/null | unfold | grep -i "^olcSyncrepl:" || true)
+repl_total=$(printf '%s\n' "$REPLS" | grep -ci "^olcSyncrepl:" || true)
 
 if [ "$repl_total" -eq 0 ]; then
     warn "no olcSyncRepl statements found" "this node is a provider only"
