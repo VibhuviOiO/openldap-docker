@@ -72,38 +72,38 @@ jobs:
       - name: Test slapd runs as non-root
         run: |
           # PID 1 is startup.sh, which runs as root on purpose: it fixes volume
-          # ownership, then starts slapd with -u ldap -g ldap. The old assertion
-          # checked PID 1 and could therefore never pass, which left this job red
-          # on main and blocked every dependabot PR.
+          # ownership, then starts slapd with -u ldap -g ldap. The claim worth
+          # verifying is that *slapd* runs as the ldap user.
           #
-          # Verify the claim that actually matters: slapd runs as the ldap user.
-          # The image has no ps, so scan /proc and read the owner from stat.
-          # /proc/<pid>/comm is the executable name (max 15 chars), so this
-          # cannot accidentally match the shell running this check - whose
-          # cmdline contains the literal word "slapd" and whose owner is root,
-          # because docker exec runs as root. Grepping cmdline for "slapd" made
-          # this assertion fail nondeterministically depending on PID order.
-          SLAPD_USER=""
-          for proc in /proc/[0-9]*; do
-            [ -r "$proc/comm" ] || continue
-            if [ "$(cat "$proc/comm" 2>/dev/null)" = "slapd" ]; then
-              SLAPD_USER=$(stat -c '%U' "$proc" 2>/dev/null || true)
-              break
+          # This MUST run inside the container. A previous version of this step
+          # scanned /proc on the runner (no docker exec), where no slapd process
+          # exists, so it failed with "no slapd process found".
+          #
+          # /proc/<pid>/comm is the executable name, so it cannot accidentally
+          # match the shell running this check.
+          docker exec ldap-test sh -c '
+            slapd_user=""
+            for proc in /proc/[0-9]*; do
+              [ -r "$proc/comm" ] || continue
+              if [ "$(cat "$proc/comm" 2>/dev/null)" = "slapd" ]; then
+                slapd_user=$(stat -c "%U" "$proc" 2>/dev/null || true)
+                break
+              fi
+            done
+
+            echo "PID 1 (startup.sh) owner : $(stat -c "%U" /proc/1)"
+            echo "slapd process owner      : ${slapd_user:-<not found>}"
+
+            if [ -z "$slapd_user" ]; then
+              echo "FAIL: no slapd process found"
+              exit 1
             fi
-          done
-
-          echo "PID 1 (startup.sh) owner : $(stat -c '%U' /proc/1)"
-          echo "slapd process owner      : ${SLAPD_USER:-<not found>}"
-
-          if [ -z "$SLAPD_USER" ]; then
-            echo "FAIL: no slapd process found"
-            exit 1
-          fi
-          if [ "$SLAPD_USER" != "ldap" ]; then
-            echo "FAIL: slapd is running as '$SLAPD_USER', expected 'ldap'"
-            exit 1
-          fi
-          echo "PASS: slapd runs as the ldap user"
+            if [ "$slapd_user" != "ldap" ]; then
+              echo "FAIL: slapd runs as ${slapd_user}, expected ldap"
+              exit 1
+            fi
+            echo "PASS: slapd runs as the ldap user"
+          '
       - name: Cleanup
         if: always()
         run: docker rm -f ldap-test 2>/dev/null || true

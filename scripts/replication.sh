@@ -81,8 +81,14 @@ validate_replication_settings() {
 
     # 3. A full SID->URL map must include this node's SID.
     if [ -n "${REPLICATION_SERVER_IDS:-}" ]; then
+        # NOTE: do NOT strip whitespace with `tr -d '[:space:]'` here. That
+        # deletes the newlines produced by `tr ',' '\n'`, collapsing every
+        # entry into one line so `cut -f1` returns only the first SID - which
+        # rejected a map that genuinely contained the node's SID.
+        # awk strips whitespace per field and leaves the records intact.
         if ! printf '%s' "$REPLICATION_SERVER_IDS" | tr ',' '\n' \
-                | tr -d '[:space:]' | cut -d= -f1 | grep -qx "$server_id"; then
+                | awk -F= -v sid="$server_id" \
+                    '{ gsub(/[[:space:]]/, "", $1); if ($1 == sid) found = 1 } END { exit !found }'; then
             log_error "REPLICATION_SERVER_IDS does not contain this node's SERVER_ID (${server_id})."
             log_error "Value: ${REPLICATION_SERVER_IDS}"
             return 1
