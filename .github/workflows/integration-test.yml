@@ -27,15 +27,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      # Both linters run from pinned images rather than whatever the runner
+      # ships. ubuntu-latest's shellcheck predates SC2329 and errors on the
+      # "# shellcheck disable=SC2329" directives in the test scripts, which
+      # failed this job in ~5s without ever reading the code.
       - name: hadolint (Dockerfile)
-        run: |
-          curl -sSL -o /tmp/hadolint \
-            https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
-          chmod +x /tmp/hadolint
-          /tmp/hadolint Dockerfile
+        run: docker run --rm -v "$PWD:/mnt" -w /mnt hadolint/hadolint:2.12.0 hadolint Dockerfile
 
       - name: shellcheck (all shell sources)
-        run: shellcheck startup.sh scripts/*.sh tests/integration/*.sh
+        run: |
+          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 \
+            startup.sh scripts/*.sh tests/integration/*.sh
 
   single-node:
     name: Single-node scenarios

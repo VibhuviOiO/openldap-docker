@@ -78,12 +78,17 @@ jobs:
           #
           # Verify the claim that actually matters: slapd runs as the ldap user.
           # The image has no ps, so scan /proc and read the owner from stat.
+          # /proc/<pid>/comm is the executable name (max 15 chars), so this
+          # cannot accidentally match the shell running this check - whose
+          # cmdline contains the literal word "slapd" and whose owner is root,
+          # because docker exec runs as root. Grepping cmdline for "slapd" made
+          # this assertion fail nondeterministically depending on PID order.
           SLAPD_USER=""
           for proc in /proc/[0-9]*; do
-            [ -r "$proc/cmdline" ] || continue
-            if tr '\0' ' ' < "$proc/cmdline" 2>/dev/null | grep -q slapd; then
+            [ -r "$proc/comm" ] || continue
+            if [ "$(cat "$proc/comm" 2>/dev/null)" = "slapd" ]; then
               SLAPD_USER=$(stat -c '%U' "$proc" 2>/dev/null || true)
-              [ -n "$SLAPD_USER" ] && break
+              break
             fi
           done
 
