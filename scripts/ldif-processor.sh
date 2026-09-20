@@ -14,6 +14,11 @@ mkdir -p "$LDIF_GENERATED_DIR"
 
 # Process a template file and replace placeholders
 # Usage: process_ldif_template <template_name> [var1=value1] [var2=value2] ...
+#
+# Substitution is done with bash parameter expansion rather than sed, so
+# values containing "/", "&" or "\" (DNs, hashes, paths) are inserted
+# literally and need no escaping. A multi-line value is valid and is
+# substituted as-is.
 process_ldif_template() {
     local template_name=$1
     shift
@@ -22,115 +27,69 @@ process_ldif_template() {
     local content
     local var_name
     local var_value
-    
+
     if [ ! -f "$template_file" ]; then
-        echo "Error: Template file not found: $template_file" >&2
+        log_error "Template file not found: $template_file"
         return 1
     fi
-    
+
     # Start with template content
     content=$(cat "$template_file")
-    
+
     # Process each variable replacement
     for var_assignment in "$@"; do
-        var_name=$(echo "$var_assignment" | cut -d'=' -f1)
-        var_value=$(echo "$var_assignment" | cut -d'=' -f2-)
-        
+        # Split on the FIRST "=" only, using parameter expansion rather than
+        # cut. cut works line-by-line, so a multi-line value (such as the
+        # optional TLS CA entry) produced a multi-line "variable name" and the
+        # placeholder was never matched - the placeholder was emitted verbatim
+        # into the LDIF and ldapmodify rejected the record.
+        var_name="${var_assignment%%=*}"
+        var_value="${var_assignment#*=}"
+
         # Replace placeholder using bash string replacement
-        # Note: No need to escape special characters for bash replacement
         content="${content//\{\{$var_name\}\}/$var_value}"
     done
-    
+
     # Write to output file
-    echo "$content" > "$output_file"
+    printf '%s\n' "$content" > "$output_file"
     echo "$output_file"
 }
 
-# Process LDIF with multi-line or conditional content
-# Usage: process_ldif_advanced <template_name> -v VAR1=value1 -v VAR2=value2 ...
-process_ldif_advanced() {
-    local template_name=$1
-    shift
-    local template_file="$LDIF_TEMPLATE_DIR/${template_name}.ldif"
-    local output_file="$LDIF_GENERATED_DIR/${template_name}.ldif"
-    local var_assignment
-    local var_name
-    local var_value
-    
-    if [ ! -f "$template_file" ]; then
-        echo "Error: Template file not found: $template_file" >&2
-        return 1
-    fi
-    
-    # Copy template to output
-    cp "$template_file" "$output_file"
-    
-    # Process each variable
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            -v)
-                shift
-                var_assignment=$1
-                var_name=$(echo "$var_assignment" | cut -d'=' -f1)
-                var_value=$(echo "$var_assignment" | cut -d'=' -f2-)
-                
-                # Escape special characters for sed
-                var_value=$(printf '%s' "$var_value" | sed 's/[&/\]/\\&/g')
-                
-                # Replace placeholder
-                sed -i "s/{{${var_name}}}/${var_value}/g" "$output_file"
-                shift
-                ;;
-            -r)
-                # Raw replacement (for multi-line content)
-                shift
-                local var_name=$1
-                local var_file=$2
-                shift 2
-                
-                if [ -f "$var_file" ]; then
-                    # Use awk for multi-line replacement
-                    awk -v placeholder="{{${var_name}}}" -v content="$(cat "$var_file")" '{
-                        gsub(placeholder, content)
-                        print
-                    }' "$output_file" > "${output_file}.tmp"
-                    mv "${output_file}.tmp" "$output_file"
-                fi
-                ;;
-            *)
-                shift
-                ;;
-        esac
-    done
-    
-    echo "$output_file"
-}
-
-# Apply LDIF file using ldapmodify with retry
-# Usage: apply_ldif <ldif_file> [ldapmodify_options]
+# Apply an LDIF file with ldapmodify, retrying transient failures.
+# Usage: apply_ldif_modify <ldif_file> [ldapmodify_options]
+#
+# The file is passed with -f so that every retry attempt re-reads it. Do NOT
+# pipe the LDIF into ldapmodify: stdin is consumed by the first attempt, so
+# retries would run against EOF (see ldap_retry in utils.sh).
+#
+# Returns non-zero when the operation ultimately fails. Callers must NOT
+# swallow that with "|| true" - a failed configuration step has to abort the
+# startup rather than be reported as success.
 apply_ldif_modify() {
     local ldif_file=$1
     shift
-    
+
     if [ ! -f "$ldif_file" ]; then
-        echo "Error: LDIF file not found: $ldif_file" >&2
+        log_error "LDIF file not found: $ldif_file"
         return 1
     fi
-    
+
     ldap_retry 5 2 ldapmodify "$@" -f "$ldif_file"
 }
 
-# Apply LDIF file using ldapadd with retry
+# Apply an LDIF file with ldapadd, retrying transient failures.
 # Usage: apply_ldif_add <ldif_file> [ldapadd_options]
+#
+# See apply_ldif_modify for why -f is required rather than a pipe.
 apply_ldif_add() {
     local ldif_file=$1
     shift
-    
+
     if [ ! -f "$ldif_file" ]; then
-        echo "Error: LDIF file not found: $ldif_file" >&2
+        log_error "LDIF file not found: $ldif_file"
         return 1
     fi
-    
+
     ldap_retry 5 2 ldapadd "$@" -f "$ldif_file"
 }
 

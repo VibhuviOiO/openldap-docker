@@ -13,27 +13,53 @@ log_error() { echo "[ERROR] ❌ $1"; }
 log_step() { echo "[STEP]  🔹 $1"; }
 log_header() { echo "[START] 🚀 $1"; }
 
-# Retry logic for LDAP operations
+# Retry logic for LDAP operations.
+#
 # Usage: ldap_retry <max_attempts> <delay_seconds> <ldap_command> [args...]
+#
+# The command must be able to re-read its input on every attempt. In practice
+# that means passing the LDIF with "-f <file>" rather than piping it in:
+#
+#   GOOD:  ldap_retry 5 2 ldapmodify -Y EXTERNAL -H ldapi:/// -f "$ldif"
+#   BAD:   cat "$ldif" | ldap_retry 5 2 ldapmodify -Y EXTERNAL -H ldapi:///
+#
+# With the pipe form the first attempt consumes stdin, so every retry reads
+# EOF and operates on empty input. That is why retries in this image used to
+# be silent no-ops. Use apply_ldif_modify / apply_ldif_add from
+# ldif-processor.sh, which do this correctly.
+#
+# On success, ldapmodify's per-entry chatter is filtered out. On final
+# failure the complete diagnostic output is printed and a non-zero status is
+# returned, so callers must NOT append "|| true".
 ldap_retry() {
     local max_attempts=$1
     local delay=$2
     shift 2
+
     local attempt=1
-    
+    local output=""
+
     while [ "$attempt" -le "$max_attempts" ]; do
-        if "$@" 2>/dev/null; then
+        if output=$("$@" 2>&1); then
+            if [ -n "$output" ]; then
+                printf '%s\n' "$output" \
+                    | grep -vE '^(modifying entry|adding new entry|deleting entry)' \
+                    || true
+            fi
             return 0
         fi
-        
+
         if [ "$attempt" -lt "$max_attempts" ]; then
-            log_warn "LDAP operation failed, retrying ($attempt/$max_attempts) in ${delay}s..."
+            log_warn "LDAP operation failed (attempt ${attempt}/${max_attempts}), retrying in ${delay}s..."
             sleep "$delay"
         fi
         attempt=$((attempt + 1))
     done
-    
-    log_error "LDAP operation failed after $max_attempts attempts"
+
+    log_error "LDAP operation failed after ${max_attempts} attempts: $*"
+    if [ -n "$output" ]; then
+        printf '%s\n' "$output" | sed 's/^/    /' >&2
+    fi
     return 1
 }
 

@@ -1,10 +1,21 @@
 # Configure TLS/SSL
-# Variables: LDAP_TLS_CERT, LDAP_TLS_KEY, LDAP_TLS_CA (optional)
+# Variables: LDAP_TLS_CERT, LDAP_TLS_KEY, TLS_EXTRA
+#
+# TLS_EXTRA is a multi-line block appended to this modify operation. It always
+# contains the protocol floor and verify-client setting, and optionally the CA
+# certificate file and a cipher suite. It is emitted by configure_tls() in
+# scripts/config.sh.
+#
+# IMPORTANT: TLS_EXTRA must never render empty - an empty line inside an LDIF
+# modify operation terminates the record, so the trailing block would be parsed
+# as a second, invalid record.
+#
+# "replace" rather than "add" so re-applying this template is idempotent.
 dn: cn=config
 changetype: modify
-add: olcTLSCertificateFile
+replace: olcTLSCertificateFile
 olcTLSCertificateFile: {{LDAP_TLS_CERT}}
 -
-add: olcTLSCertificateKeyFile
+replace: olcTLSCertificateKeyFile
 olcTLSCertificateKeyFile: {{LDAP_TLS_KEY}}
-{{TLS_CA_ENTRY}}
+{{TLS_EXTRA}}
