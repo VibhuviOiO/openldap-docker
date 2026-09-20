@@ -84,6 +84,36 @@ ou: $3
 EOF
 }
 
+# Return a node's contextCSN set, one per line, sorted.
+# shellcheck disable=SC2329
+csn_set() {  # <container>
+    docker exec "$1" ldapsearch -x -H ldap://localhost -D "$ADMIN_DN" -w "$ADMIN_PW" \
+        -b "$BASE_DN" -s base contextCSN 2>/dev/null \
+        | grep "^contextCSN:" | sed 's/^contextCSN: //' | sort
+}
+
+# Wait until all three nodes report the SAME contextCSN set.
+#
+# In a multi-provider mesh every node mints its own SID during local
+# initialisation, so convergence is bidirectional and takes time. Asserting
+# immediately after the first write raced on a fast runner: node2 and node3 had
+# all three SIDs while node1 still had only its own, and ldapcheck correctly
+# reported no convergence.
+wait_converged() {
+    local tries=${1:-30}
+    local _i node1
+    for _i in $(seq 1 "$tries"); do
+        node1=$(csn_set ldapci-node1)
+        if [ -n "$node1" ] \
+           && [ "$node1" = "$(csn_set ldapci-node2)" ] \
+           && [ "$node1" = "$(csn_set ldapci-node3)" ]; then
+            return 0
+        fi
+        sleep 5
+    done
+    return 1
+}
+
 wait_healthy() {
     local name=$1
     for _ in $(seq 1 50); do
@@ -256,6 +286,14 @@ done
 
 # Convergence per the bundled validator.
 section "ldapcheck.sh --peers"
+if wait_converged 30; then
+    pass "all three nodes report the same contextCSN set"
+else
+    fail "nodes had not converged after 150s"
+    for n in ldapci-node1 ldapci-node2 ldapci-node3; do
+        printf '       %s: %s CSN(s)\n' "$n" "$(csn_set "$n" | grep -c . || true)"
+    done
+fi
 if docker exec ldapci-node1 /usr/local/bin/scripts/ldapcheck.sh --peers ldapci-node2,ldapci-node3 >/dev/null 2>&1; then
     pass "ldapcheck reports no failures"
 else
