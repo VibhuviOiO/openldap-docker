@@ -257,11 +257,11 @@ configure_replication_peers() {
         rid_index=$((rid_index + 1))
     done
     
-    # Enable mirror mode
+    # Enable multi-provider mode
     enable_mirror_mode
 }
 
-# Enable mirror mode
+# Enable multi-provider mode
 enable_mirror_mode() {
     log_step "Enabling mirror mode..."
     
@@ -270,7 +270,7 @@ enable_mirror_mode() {
     
     apply_ldif_modify "$ldif_file" -Y EXTERNAL -H ldapi:///
     
-    log_success "Mirror mode enabled"
+    log_success "Multi-provider mode enabled"
 }
 
 # Check if replication is configured

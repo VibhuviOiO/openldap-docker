@@ -293,8 +293,9 @@ main() {
     # Prepare directories and log file
     mkdir -p /logs
     chown ldap:ldap /logs
-    touch /logs/slapd.log
-    chown ldap:ldap /logs/slapd.log
+    # NOTE: /logs/slapd.log is deliberately not created. slapd writes to
+    # stdout/stderr so the container runtime handles it; /logs is still needed
+    # for audit.log, which the auditlog overlay writes to a file it holds open.
     
     # Start slapd in background for configuration
     log_info "Starting slapd for initial configuration..."

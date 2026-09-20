@@ -63,7 +63,12 @@ eventually() {
 # Predicates (passed to eventually by name; shellcheck cannot follow them).
 # shellcheck disable=SC2329
 cfg_has() {  # <filter> <needle>
-    docker exec ldapci-node1 ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "$1" 2>/dev/null | grep -qi "$2"
+    # Anchor the match to the start of a line: an unanchored grep also matches
+    # ldapsearch's own "# requesting: <attr>" header, so the assertion passed
+    # even when the attribute was absent, and could only fail when ldapsearch
+    # produced no output at all (a transient exec failure).
+    docker exec ldapci-node1 ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "$1" 2>/dev/null \
+        | grep -qiE "^${2}"
 }
 # shellcheck disable=SC2329
 node_has() {  # <container> <basedn>
@@ -157,7 +162,7 @@ fi
 section "replication configuration (cn=config)"
 LOCAL="docker exec ldapci-node1 ldapsearch -Y EXTERNAL -H ldapi:///"
 
-if eventually 5 cfg_has "(olcModuleLoad=*)" "syncprov.la"; then
+if eventually 10 cfg_has "(olcModuleLoad=*)" "olcModuleLoad:.*syncprov"; then
     pass "syncprov.la is loaded (module-vs-entry guard works with memberof enabled)"
 else
     fail "syncprov.la is NOT loaded"
@@ -193,19 +198,19 @@ else
     fail "replication is not using cn=replicator"
 fi
 
-if eventually 5 cfg_has "(olcMultiProvider=*)" "olcMultiProvider: TRUE"; then
+if eventually 10 cfg_has "(olcMultiProvider=*)" "olcMultiProvider: TRUE"; then
     pass "olcMultiProvider: TRUE"
 else
     fail "olcMultiProvider is not TRUE"
 fi
 
-if eventually 5 cfg_has "(olcSpCheckpoint=*)" "olcSpCheckpoint"; then
+if eventually 10 cfg_has "(olcSpCheckpoint=*)" "olcSpCheckpoint"; then
     pass "olcSpCheckpoint configured"
 else
     fail "olcSpCheckpoint missing"
 fi
 
-if eventually 5 cfg_has "(olcSpSessionlog=*)" "olcSpSessionlog"; then
+if eventually 10 cfg_has "(olcSpSessionlog=*)" "olcSpSessionlog"; then
     pass "olcSpSessionlog configured"
 else
     fail "olcSpSessionlog missing"

@@ -1,5 +1,13 @@
-# Enable mirror mode for multi-master replication
+# Enable multi-provider mode (formerly "mirror mode").
+#
+# OpenLDAP 2.6 renamed this attribute: the canonical name is olcMultiProvider and
+# olcMirrorMode is a deprecated alias. Writing the old name still works because
+# slapd normalises it, but it is undocumented in the 2.6 Administrator's Guide
+# ("the only change is the following two directives: multiprovider on / serverID 1")
+# and may be dropped in a future release.
+#
+# "replace" rather than "add" so re-applying is idempotent.
 dn: olcDatabase={2}mdb,cn=config
 changetype: modify
-add: olcMirrorMode
-olcMirrorMode: TRUE
+replace: olcMultiProvider
+olcMultiProvider: TRUE
