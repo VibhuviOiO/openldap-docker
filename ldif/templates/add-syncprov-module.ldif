@@ -1,0 +1,13 @@
+# Add syncprov module to an existing module entry
+# Variables: none
+#
+# Used when cn=module{0},cn=config already exists (created by the memberof,
+# refint, ppolicy or auditlog loader) and syncprov.la must be appended to it.
+#
+# NOTE: the presence of cn=module{0},cn=config does NOT mean syncprov is
+# loaded. Only "olcModuleLoad: syncprov.la" means that. Checking for the entry
+# instead of the module made replication silently fail to load syncprov.
+dn: cn=module{0},cn=config
+changetype: modify
+add: olcModuleLoad
+olcModuleLoad: syncprov.la
