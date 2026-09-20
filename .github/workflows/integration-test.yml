@@ -1,0 +1,80 @@
+name: Integration Tests
+
+# Exercises the behaviours that are silent when they break: ACL enforcement,
+# overlays, TLS, docker secrets, idempotency, fail-fast guardrails, and a real
+# 3-node multi-provider cluster with convergence and catch-up after restart.
+#
+# The scenarios live in tests/integration/ so they can also be run locally:
+#   docker build -t openldap:local .
+#   tests/integration/single-node.sh openldap:local
+#   tests/integration/replication.sh openldap:local
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: hadolint (Dockerfile)
+        run: |
+          curl -sSL -o /tmp/hadolint \
+            https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          chmod +x /tmp/hadolint
+          /tmp/hadolint Dockerfile
+
+      - name: shellcheck (all shell sources)
+        run: shellcheck startup.sh scripts/*.sh tests/integration/*.sh
+
+  single-node:
+    name: Single-node scenarios
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build image
+        run: docker build --no-cache -t openldap:ci .
+
+      - name: Run single-node integration scenarios
+        run: bash tests/integration/single-node.sh openldap:ci
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          for c in $(docker ps -a --filter "name=ldapci" --format '{{.Names}}'); do
+            echo "===== $c ====="
+            docker logs "$c" 2>&1 | tail -40 || true
+          done
+
+  replication:
+    name: 3-node replication
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build image
+        run: docker build --no-cache -t openldap:ci .
+
+      - name: Run 3-node replication integration test
+        run: bash tests/integration/replication.sh openldap:ci
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          for c in $(docker ps -a --filter "name=ldapci" --format '{{.Names}}'); do
+            echo "===== $c ====="
+            docker logs "$c" 2>&1 | tail -40 || true
+          done

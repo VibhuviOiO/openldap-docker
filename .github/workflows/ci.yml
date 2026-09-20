@@ -51,6 +51,20 @@ jobs:
             -D "cn=Manager,dc=test,dc=local" -w testpass \
             -b "dc=test,dc=local" -s base "(objectClass=*)" dn
 
+
+      - name: Verify VERSION matches the installed OpenLDAP
+        run: |
+          DECLARED=$(tr -d '[:space:]' < VERSION)
+          INSTALLED=$(docker run --rm --entrypoint cat openldap:test /usr/local/share/openldap-version | tr -d '[:space:]')
+          echo "VERSION file:     $DECLARED"
+          echo "installed in image: $INSTALLED"
+          if [ "$DECLARED" != "$INSTALLED" ]; then
+            echo "::error::VERSION ($DECLARED) does not match the OpenLDAP version installed in the image ($INSTALLED)."
+            echo "The published image tag is derived from VERSION, so the tag would lie about what is inside."
+            exit 1
+          fi
+          echo "OK: image tag matches the installed OpenLDAP version"
+
       - name: Test health check
         run: |
           docker exec ldap-test /usr/local/bin/scripts/healthcheck.sh
