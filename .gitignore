@@ -10,6 +10,8 @@
 !CONTRIBUTING.md
 !CODE_OF_CONDUCT.md
 !LICENSE.md
+# PR templates live under .github and must be tracked
+!.github/**/*.md
 
 # Development and Testing Tools (not for production)
 dev-tools/
@@ -19,7 +21,8 @@ audit-logs/
 *.log
 
 # Docker (development only)
-.dockerignore
+# NOTE: .dockerignore is deliberately NOT ignored. Without it in the repo, a
+# fresh clone sends .git/, .github/ and the docs into the build context.
 
 # IDE
 .vscode

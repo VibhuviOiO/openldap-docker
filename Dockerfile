@@ -16,6 +16,14 @@ RUN dnf install -y dnf-plugins-core epel-release && \
         logrotate \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*
+# Record the OpenLDAP version actually installed by the package manager.
+# The image tag must be this version, not a hand-maintained number that drifts
+# when the base repo ships a newer openldap-servers. CI verifies the two match
+# (see .github/workflows/ci.yml).
+RUN set -eux; \
+    printf '%s\n' "$(rpm -q --qf '%{VERSION}' openldap-servers)" > /usr/local/share/openldap-version; \
+    cat /usr/local/share/openldap-version
+
 RUN mkdir -p \
         /var/lib/ldap \
         /etc/openldap/slapd.d \
@@ -42,9 +50,9 @@ COPY --chown=root:root --chmod=755 scripts/*.sh /usr/local/bin/scripts/
 COPY --chown=root:root --chmod=755 startup.sh /usr/local/bin/
 EXPOSE 389 636
 HEALTHCHECK --interval=30s \
-            --timeout=5s \
-            --start-period=30s \
+            --timeout=10s \
+            --start-period=90s \
             --retries=3 \
-    CMD /usr/local/bin/scripts/healthcheck.sh basic || exit 1
+    CMD /usr/local/bin/scripts/healthcheck.sh auto || exit 1
 STOPSIGNAL SIGTERM
 CMD ["/usr/local/bin/startup.sh"]
