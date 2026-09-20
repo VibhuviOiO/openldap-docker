@@ -325,7 +325,10 @@ A bundled validator checks the configuration and, optionally, cross-node converg
 # Local configuration only
 docker exec openldap /usr/local/bin/scripts/ldapcheck.sh
 
-# Compare contextCSN against peers
+# Compare contextCSN against this node's own REPLICATION_PEERS
+docker exec openldap /usr/local/bin/scripts/ldapcheck.sh --peers
+
+# ...or against an explicit list
 docker exec openldap /usr/local/bin/scripts/ldapcheck.sh --peers node2,node3
 
 # Also compare entry counts (reads every entry)
@@ -336,6 +339,16 @@ It fails (non-zero) on a finite `retry` list, a missing `keepalive`, a missing
 `entryCSN` index, `olcMultiProvider` not TRUE, `olcReadOnly` set, a missing `olcServerID`
 for the local SID, a `syncprov` overlay that is absent or duplicated, or a peer whose
 `contextCSN` set has not converged. Suitable for CI and for incident triage.
+
+The peer checks need an administrator bind. `ldapcheck.sh` reads `LDAP_ADMIN_PASSWORD`
+when it is set, and otherwise reads `LDAP_ADMIN_PASSWORD_FILE`. That fallback matters
+under Docker secrets and Kubernetes Secrets, where PID 1 loads the password file into
+its own environment and never exports it to a later `docker exec`:
+
+```bash
+docker exec -e LDAP_ADMIN_PASSWORD_FILE=/run/secrets/admin-password \
+    openldap /usr/local/bin/scripts/ldapcheck.sh --peers
+```
 
 `make ldapcheck` wraps it, and `make backup` / `make restore` cover data plus `cn=config`.
 Note that `make restore` is destructive and requires `FORCE=1`.

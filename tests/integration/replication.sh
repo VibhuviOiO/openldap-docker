@@ -301,6 +301,36 @@ else
     docker exec ldapci-node1 /usr/local/bin/scripts/ldapcheck.sh --peers ldapci-node2,ldapci-node3 2>&1 | sed 's/^/       /'
 fi
 
+# Regression: a bare `--peers` used to be parsed as `PEERS="$2"; shift 2`. With
+# --peers as the last argument `shift 2` failed under `set -e`, so the script
+# exited 1 having printed nothing - the worst possible failure mode for a
+# diagnostic tool.
+if docker exec ldapci-node1 /usr/local/bin/scripts/ldapcheck.sh --peers >/dev/null 2>&1; then
+    pass "bare --peers derives the peer list from REPLICATION_PEERS"
+else
+    fail "bare --peers did not work"
+    docker exec ldapci-node1 /usr/local/bin/scripts/ldapcheck.sh --peers 2>&1 | sed 's/^/       /'
+fi
+
+# Regression: these containers are started with -e LDAP_ADMIN_PASSWORD, so the
+# peer checks passed in CI while being unusable in any secrets-file deployment
+# (Docker secrets, Kubernetes Secrets). PID 1 loads LDAP_ADMIN_PASSWORD_FILE
+# into its own environment and never exports it to a later `docker exec`, so
+# ldapcheck has to read the file itself. The file deliberately ends in a newline
+# because that is what `--from-file` and `echo pw > f` produce.
+docker exec ldapci-node1 sh -c "printf '%s\n' '${ADMIN_PW}' > /tmp/admin-pw && chmod 600 /tmp/admin-pw"
+if docker exec \
+        -e LDAP_ADMIN_PASSWORD= \
+        -e LDAP_ADMIN_PASSWORD_FILE=/tmp/admin-pw \
+        ldapci-node1 /usr/local/bin/scripts/ldapcheck.sh --peers >/dev/null 2>&1; then
+    pass "peer checks work from LDAP_ADMIN_PASSWORD_FILE alone"
+else
+    fail "peer checks need LDAP_ADMIN_PASSWORD in the environment"
+    docker exec -e LDAP_ADMIN_PASSWORD= -e LDAP_ADMIN_PASSWORD_FILE=/tmp/admin-pw \
+        ldapci-node1 /usr/local/bin/scripts/ldapcheck.sh --peers 2>&1 | sed 's/^/       /'
+fi
+docker exec ldapci-node1 rm -f /tmp/admin-pw >/dev/null 2>&1 || true
+
 # --- resilience: stop a provider, write, restart, expect catch-up -------------
 
 section "catch-up after a provider restart"
