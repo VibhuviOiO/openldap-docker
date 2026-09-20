@@ -1,0 +1,9 @@
+# Create the ou=Policies container for password policy entries.
+# Variables: LDAP_BASE_DN
+#
+# Split out of create-default-policy.ldif on purpose: ldapadd stops at the first
+# failing record, so a directory that already had ou=Policies but not cn=default
+# failed the whole add and silently ended up with no password policy.
+dn: ou=Policies,{{LDAP_BASE_DN}}
+objectClass: organizationalUnit
+ou: Policies

@@ -1,0 +1,10 @@
+# Disallow anonymous simple binds.
+#
+# NOTE: once bind_anon is disallowed the rootDSE is no longer readable over an
+# anonymous ldap:// bind. healthcheck.sh therefore falls back to an ldapi://
+# EXTERNAL bind for its basic check. Any external client that relies on
+# anonymous rootDSE reads (schema discovery, some monitoring probes) will break.
+dn: cn=config
+changetype: modify
+add: olcDisallows
+olcDisallows: bind_anon

@@ -2,8 +2,8 @@
 # Variables: CONN_MAX_PENDING, CONN_MAX_PENDING_AUTH
 dn: cn=config
 changetype: modify
-add: olcConnMaxPending
+replace: olcConnMaxPending
 olcConnMaxPending: {{CONN_MAX_PENDING}}
 -
-add: olcConnMaxPendingAuth
+replace: olcConnMaxPendingAuth
 olcConnMaxPendingAuth: {{CONN_MAX_PENDING_AUTH}}

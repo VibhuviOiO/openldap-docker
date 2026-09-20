@@ -1,0 +1,10 @@
+# Set the slapd worker thread count.
+# Variables: THREADS
+#
+# Default is 16. Thread-queue contention under a connector-style connection
+# sweep is a real failure mode on small containers; LDAP_THREADS makes it
+# tunable rather than implicit.
+dn: cn=config
+changetype: modify
+replace: olcThreads
+olcThreads: {{THREADS}}

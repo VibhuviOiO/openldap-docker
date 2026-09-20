@@ -1,12 +1,45 @@
 # Set database access controls
-# Variables: LDAP_ADMIN_DN
+# Variables: LDAP_ADMIN_DN, LDAP_BASE_DN, READ_SUBJECT
+#
+# IMPORTANT: only attributes that exist in the *already loaded* schema may
+# appear in "to attrs=". OpenLDAP resolves those names when the ACL is parsed
+# and rejects the whole modify with "unknown attr ... in to clause" otherwise.
+#
+# This is why "shadowLastChange" was removed from rule {0}: it comes from
+# nis.schema, which is not loaded by default - and schemas are loaded *after*
+# this step runs, so it could never be valid here even with
+# INCLUDE_SCHEMAS=nis. That single unknown attribute made the entire modify
+# fail atomically, so no ACL was ever applied and the data database silently
+# fell back to OpenLDAP's default access policy. If you load nis.schema and
+# want shadowLastChange protected, add it with a second ldapmodify at the end
+# of initialisation.
+#
+# Order matters: the first matching "by" clause wins, so the replicator read
+# grant must precede "by * none".
+#
+# userPassword: the replicator needs "read" (not just "auth") or passwords will
+# not replicate and a promoted replica cannot serve binds. The local root
+# identity is deliberately NOT granted userPassword read - it does not need it.
+#
+# The peercred root identity (gidNumber=0+uidNumber=0,cn=peercred,cn=external,
+# cn=auth) is granted read on the data tree so that operational tooling run via
+# `docker exec` (healthcheck.sh, ldapcheck.sh) can verify suffix and contextCSN
+# state without embedding an administrator password in a probe. Anyone able to
+# run docker exec as root can already read the LMDB files directly, so this does
+# not widen the practical trust boundary. It is the same identity that
+# configure-monitor.ldif already uses for cn=Monitor.
+#
+# READ_SUBJECT defaults to "users" - any authenticated principal may read the
+# whole directory. Set LDAP_READ_ACCESS_SUBJECT to a group selector, e.g.
+#   group.exact="cn=ldap-readers,ou=Group,<base>"
+# to restrict reads to a group.
 dn: olcDatabase={2}mdb,cn=config
 changetype: modify
 add: olcAccess
-olcAccess: {0}to attrs=userPassword,shadowLastChange by dn="{{LDAP_ADMIN_DN}}" write by anonymous auth by self write by * none
+olcAccess: {0}to attrs=userPassword by dn="{{LDAP_ADMIN_DN}}" write by dn.exact="cn=replicator,{{LDAP_BASE_DN}}" read by anonymous auth by self write by * none
 -
 add: olcAccess
 olcAccess: {1}to dn.base="" by * read
 -
 add: olcAccess
-olcAccess: {2}to * by dn="{{LDAP_ADMIN_DN}}" write by users read by * none
+olcAccess: {2}to * by dn="{{LDAP_ADMIN_DN}}" write by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.exact="cn=replicator,{{LDAP_BASE_DN}}" read by {{READ_SUBJECT}} read by * none
