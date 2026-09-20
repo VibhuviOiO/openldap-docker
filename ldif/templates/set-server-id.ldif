@@ -1,6 +1,25 @@
-# Set server ID for replication
-# Variables: SERVER_ID
+# Set server ID(s) for replication
+# Variables: SERVER_ID_LINES
+#
+# In an N-way multi-provider mesh every node should know the full set of
+# (SID, URL) pairs, not just its own SID. This is what the OpenLDAP 2.6
+# Administrator's Guide's N-Way example does:
+#
+#   replace: olcServerID
+#   olcServerID: 1 ldap://node1
+#   olcServerID: 2 ldap://node2
+#   olcServerID: 3 ldap://node3
+#
+# Provide that list with REPLICATION_SERVER_IDS="1=ldap://node1:389,2=ldap://node2:389".
+# When it is not provided we fall back to a single "olcServerID: <n>", which is
+# still valid but does not describe the mesh.
+#
+# The guide also warns: "URLs specified in olcSyncRepl directives are the URLs
+# of the servers from which to replicate. These must exactly match the URLs
+# slapd listens on. Otherwise slapd may attempt to replicate from itself,
+# causing a loop." validate_replication_settings() in scripts/replication.sh
+# rejects a REPLICATION_PEERS entry that names this node.
 dn: cn=config
 changetype: modify
 replace: olcServerID
-olcServerID: {{SERVER_ID}}
+{{SERVER_ID_LINES}}

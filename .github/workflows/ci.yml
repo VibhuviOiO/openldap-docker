@@ -51,21 +51,59 @@ jobs:
             -D "cn=Manager,dc=test,dc=local" -w testpass \
             -b "dc=test,dc=local" -s base "(objectClass=*)" dn
 
+
+      - name: Verify VERSION matches the installed OpenLDAP
+        run: |
+          DECLARED=$(tr -d '[:space:]' < VERSION)
+          INSTALLED=$(docker run --rm --entrypoint cat openldap:test /usr/local/share/openldap-version | tr -d '[:space:]')
+          echo "VERSION file:     $DECLARED"
+          echo "installed in image: $INSTALLED"
+          if [ "$DECLARED" != "$INSTALLED" ]; then
+            echo "::error::VERSION ($DECLARED) does not match the OpenLDAP version installed in the image ($INSTALLED)."
+            echo "The published image tag is derived from VERSION, so the tag would lie about what is inside."
+            exit 1
+          fi
+          echo "OK: image tag matches the installed OpenLDAP version"
+
       - name: Test health check
         run: |
           docker exec ldap-test /usr/local/bin/scripts/healthcheck.sh
 
-      - name: Test non-root execution
+      - name: Test slapd runs as non-root
         run: |
-          PROC_USER=$(docker exec ldap-test ps -o user= -p 1 2>/dev/null || docker exec ldap-test stat -c '%U' /proc/1)
-          echo "Process running as: $PROC_USER"
-          if echo "$PROC_USER" | grep -qE "ldap|55"; then
-            echo "PASS: Running as non-root (ldap user)"
-          else
-            echo "FAIL: Not running as ldap user"
-            exit 1
-          fi
+          # PID 1 is startup.sh, which runs as root on purpose: it fixes volume
+          # ownership, then starts slapd with -u ldap -g ldap. The claim worth
+          # verifying is that *slapd* runs as the ldap user.
+          #
+          # This MUST run inside the container. A previous version of this step
+          # scanned /proc on the runner (no docker exec), where no slapd process
+          # exists, so it failed with "no slapd process found".
+          #
+          # /proc/<pid>/comm is the executable name, so it cannot accidentally
+          # match the shell running this check.
+          docker exec ldap-test sh -c '
+            slapd_user=""
+            for proc in /proc/[0-9]*; do
+              [ -r "$proc/comm" ] || continue
+              if [ "$(cat "$proc/comm" 2>/dev/null)" = "slapd" ]; then
+                slapd_user=$(stat -c "%U" "$proc" 2>/dev/null || true)
+                break
+              fi
+            done
 
+            echo "PID 1 (startup.sh) owner : $(stat -c "%U" /proc/1)"
+            echo "slapd process owner      : ${slapd_user:-<not found>}"
+
+            if [ -z "$slapd_user" ]; then
+              echo "FAIL: no slapd process found"
+              exit 1
+            fi
+            if [ "$slapd_user" != "ldap" ]; then
+              echo "FAIL: slapd runs as ${slapd_user}, expected ldap"
+              exit 1
+            fi
+            echo "PASS: slapd runs as the ldap user"
+          '
       - name: Cleanup
         if: always()
         run: docker rm -f ldap-test 2>/dev/null || true

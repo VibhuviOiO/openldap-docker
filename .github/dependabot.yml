@@ -4,3 +4,20 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Bundle every action bump into a single PR instead of one per action.
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Tracks FROM almalinux:9.7 in the Dockerfile. This is the dependency that
+  # decides which OpenLDAP version ends up inside the image, so base-image bumps
+  # should arrive as a deliberate proposal rather than a surprise.
+  #
+  # The ci.yml step "Verify VERSION matches the installed OpenLDAP" fails the
+  # build when a base-image bump changes the OpenLDAP version - that failure is
+  # the reminder to update the VERSION file (and the published tag) in the same
+  # PR.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"

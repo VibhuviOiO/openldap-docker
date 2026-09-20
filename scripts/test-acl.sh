@@ -17,7 +17,7 @@ echo ""
 
 # Test 1: Anonymous bind to rootDSE should work
 echo "=== Test 1: Anonymous bind to rootDSE ==="
-if ldapsearch -x -H ldap://$LDAP_HOST:$LDAP_PORT -b "" -s base "(objectClass=*)" 2>&1 | grep -q "namingContexts"; then
+if ldapsearch -x -H ldap://"${LDAP_HOST}":"${LDAP_PORT}" -b "" -s base "(objectClass=*)" 2>&1 | grep -q "namingContexts"; then
     echo "✓ PASS: Anonymous bind to rootDSE works (expected)"
 else
     echo "✗ FAIL: Cannot read rootDSE anonymously"
@@ -27,7 +27,7 @@ fi
 # Test 2: Anonymous read of base domain should fail
 echo ""
 echo "=== Test 2: Anonymous read of user entries ==="
-ANON_RESULT=$(ldapsearch -x -H ldap://$LDAP_HOST:$LDAP_PORT -b "$BASE_DN" "(objectClass=inetOrgPerson)" cn 2>&1 || true)
+ANON_RESULT=$(ldapsearch -x -H ldap://"${LDAP_HOST}":"${LDAP_PORT}" -b "$BASE_DN" "(objectClass=inetOrgPerson)" cn 2>&1 || true)
 
 if echo "$ANON_RESULT" | grep -q "No such object\|Insufficient access\|size limit exceeded"; then
     echo "✓ PASS: Anonymous read correctly denied"
@@ -43,7 +43,7 @@ fi
 # Test 3: Authenticated read should work
 echo ""
 echo "=== Test 3: Authenticated read of user entries ==="
-if ldapsearch -x -H ldap://$LDAP_HOST:$LDAP_PORT \
+if ldapsearch -x -H ldap://"${LDAP_HOST}":"${LDAP_PORT}" \
     -D "$LDAP_ADMIN_DN" \
     -w "$LDAP_ADMIN_PASSWORD" \
     -b "$BASE_DN" \

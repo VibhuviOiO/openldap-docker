@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# GitHub
+.github
+
+# Documentation
+README.md
+LICENSE
+PLAN.md
+*.md
+
+# Docker compose files
+docker-compose.yml
+
+# Logs
+logs/
+*.log
+
+# Development/IDE
+.hadolint.yml
+.shellcheckrc
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+backups/
+*.bak
+*.backup
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+*.tar.gz
+*.zip

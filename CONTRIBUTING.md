@@ -46,11 +46,11 @@ Before submitting a PR, verify:
 # Basic functionality
 ./scripts/test-basic.sh
 
-# Run a use-case
-cd use-cases/vibhuvi-com-singlenode
+# Run an integration use-case from the sibling openldap-usecases repository
+cd ../openldap-usecases/vibhuvi-com-singlenode
 docker compose up -d
 # Verify LDAP is healthy
-docker compose exec ldap ldapsearch -x -H ldap://localhost -b "dc=vibhuvi,dc=com" -D "cn=admin,dc=vibhuvi,dc=com" -w admin "(objectClass=*)" dn
+docker compose exec openldap-vibhuvi ldapsearch -x -H ldap://localhost -b "dc=vibhuvi,dc=com" -D "cn=Manager,dc=vibhuvi,dc=com" -w changeme "(objectClass=*)" dn
 docker compose down -v
 ```
 

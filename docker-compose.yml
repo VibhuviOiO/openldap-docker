@@ -1,23 +1,69 @@
+# Single-node OpenLDAP.
+#
+# Usage:
+#   cp .env.example .env    # optional - the defaults below work with no .env
+#   docker compose up -d
+#
+# Compose reads .env automatically for the ${VAR:-default} interpolation here,
+# so no env_file is required and the stack starts on a fresh clone.
 services:
   openldap:
-    image: vibhuvioio/openldap:latest
+    image: ${LDAP_IMAGE:-vibhuvioio/openldap:latest}
     container_name: openldap
     restart: unless-stopped
     ports:
       - "389:389"
       - "636:636"
-    env_file:
-      - .env
+    environment:
+      - LDAP_DOMAIN=${LDAP_DOMAIN:-example.com}
+      - LDAP_ORGANIZATION=${LDAP_ORGANIZATION:-Example Organization}
+      - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD:-changeme}
+      - LDAP_CONFIG_PASSWORD=${LDAP_CONFIG_PASSWORD:-changeme}
+      - ENABLE_REPLICATION=${ENABLE_REPLICATION:-false}
+      - ENABLE_MONITORING=${ENABLE_MONITORING:-true}
+      - ENABLE_MEMBEROF=${ENABLE_MEMBEROF:-false}
+      - ENABLE_PASSWORD_POLICY=${ENABLE_PASSWORD_POLICY:-false}
+      - ENABLE_AUDIT_LOG=${ENABLE_AUDIT_LOG:-false}
+      - INCLUDE_SCHEMAS=${INCLUDE_SCHEMAS:-}
+      - LDAP_LOG_LEVEL=${LDAP_LOG_LEVEL:-}
     volumes:
       - ldap-data:/var/lib/ldap
       - ldap-config:/etc/openldap/slapd.d
       - ldap-logs:/logs
+
+    # Docker sends SIGTERM and then SIGKILL once stop_grace_period elapses. The
+    # entrypoint waits up to 30s for slapd to drain, so the default 10s would
+    # kill slapd mid-transaction and force a full database scan on next start.
+    stop_grace_period: 30s
+
+    # slapd uses one file descriptor per connection.
+    ulimits:
+      nofile:
+        soft: 10240
+        hard: 10240
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_READ_SEARCH
+      - DAC_OVERRIDE
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+
     healthcheck:
-      test: ["CMD", "/usr/local/bin/scripts/healthcheck.sh", "basic"]
+      test: ["CMD", "/usr/local/bin/scripts/healthcheck.sh", "auto"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 30s
+      # A cold start configures the database and waits for port 389 to be
+      # released; a 30s start period marked a healthy container unhealthy while
+      # it was still initialising.
+      start_period: 90s
+
     deploy:
       resources:
         limits:
@@ -25,11 +71,13 @@ services:
           cpus: "1.0"
         reservations:
           memory: 128M
+
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
     networks:
       - ldap-network
 

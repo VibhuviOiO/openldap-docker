@@ -1,6 +1,11 @@
 # Configure monitor access
-# Variables: LDAP_ADMIN_DN
+# Variables: LDAP_ADMIN_DN, LDAP_BASE_DN
+#
+# A dedicated cn=monitor account is granted read access so that an exporter
+# does not need to bind as the directory rootDN. Previously only the rootDN
+# could read cn=Monitor, which meant any monitoring stack had to hold full
+# administrator credentials.
 dn: olcDatabase={1}monitor,cn=config
 changetype: modify
 replace: olcAccess
-olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.base="{{LDAP_ADMIN_DN}}" read by * none
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.base="{{LDAP_ADMIN_DN}}" read by dn.exact="cn=monitor,{{LDAP_BASE_DN}}" read by * none

@@ -1,0 +1,9 @@
+# Add ppolicy module to an existing module entry
+# Variables: none
+#
+# Used when cn=module{0},cn=config already exists (created by the memberof,
+# refint, auditlog or syncprov loader) and ppolicy.la must be appended to it.
+dn: cn=module{0},cn=config
+changetype: modify
+add: olcModuleLoad
+olcModuleLoad: ppolicy.la

@@ -1,5 +1,21 @@
 # Add syncprov overlay
+#
+# olcSpCheckpoint: 100 10
+#   Checkpointing is DISABLED by default in OpenLDAP. Without it the
+#   contextCSN is only written to the database on a clean shutdown, so after
+#   an unclean shutdown (SIGKILL at the default 10s Docker grace period, OOM,
+#   host crash) the next startup must scan the entire database to determine
+#   the contextCSN - which on a large directory "may take quite a long time"
+#   (slapo-syncprov(5)) and can exceed the healthcheck start period.
+#
+# olcSpSessionlog: 100
+#   Without a session log, a consumer whose session expired must perform a
+#   full refresh of the whole database instead of a delta. The session log is
+#   in-memory, so it is lost on restart; it still avoids full refreshes during
+#   normal operation.
 dn: olcOverlay=syncprov,olcDatabase={2}mdb,cn=config
 objectClass: olcOverlayConfig
 objectClass: olcSyncProvConfig
 olcOverlay: syncprov
+olcSpCheckpoint: 100 10
+olcSpSessionlog: 100

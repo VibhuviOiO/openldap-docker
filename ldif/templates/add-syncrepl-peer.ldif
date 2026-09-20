@@ -1,15 +1,25 @@
 # Add replication peer
-# Variables: RID, PEER, LDAP_ADMIN_DN, LDAP_ADMIN_PASSWORD, LDAP_BASE_DN
+# Variables: RID, PEER, BIND_DN, BIND_PASSWORD, LDAP_BASE_DN, TLS_OPTS
 #
-# SECURITY NOTE: This configuration stores the admin password in cleartext in
-# the cn=config database. This is a known limitation of the current simple
-# bind authentication method. Anyone with read access to cn=config can see
-# the replication credentials.
+# SECURITY NOTE: This configuration stores the bind password in cleartext in
+# the cn=config database. That is a limitation of simple bind. Prefer the
+# dedicated least-privilege cn=replicator account (LDAP_REPLICATION_PASSWORD)
+# over the directory rootDN, and set LDAP_REPLICATION_STARTTLS=critical so the
+# credential is not also sent in cleartext over the network.
 #
-# Future improvement: Support SASL/EXTERNAL or TLS client certificate
-# authentication to eliminate cleartext credential storage.
+# retry="5 5 300 +":
+#   The "+" makes the retry count infinite. Without it the list is exhausted
+#   (5 tries at 5s, then 5 at 300s, ~25 minutes) and syncrepl stops retrying
+#   permanently - the node then serves stale data with no error logged
+#   anywhere. Note that the OpenLDAP Administrator's Guide's own N-Way
+#   multi-provider example uses the finite form "5 5 300 5".
 #
+# keepalive=60:3:10:
+#   An idle refreshAndPersist connection crossing a stateful firewall/NAT can
+#   be dropped from the middlebox state table without an RST. Both ends keep
+#   reporting ESTABLISHED and retry never fires, because the consumer believes
+#   the link is healthy. TCP keepalive detects the dead link.
 dn: olcDatabase={2}mdb,cn=config
 changetype: modify
 add: olcSyncRepl
-olcSyncRepl: rid={{RID}} provider=ldap://{{PEER}}:389 binddn="{{LDAP_ADMIN_DN}}" bindmethod=simple credentials={{LDAP_ADMIN_PASSWORD}} searchbase="{{LDAP_BASE_DN}}" type=refreshAndPersist retry="5 5 300 5" timeout=1
+olcSyncRepl: rid={{RID}} provider=ldap://{{PEER}}:389 binddn="{{BIND_DN}}" bindmethod=simple credentials={{BIND_PASSWORD}} searchbase="{{LDAP_BASE_DN}}" type=refreshAndPersist retry="5 5 300 +" keepalive=60:3:10 timeout=1{{TLS_OPTS}}

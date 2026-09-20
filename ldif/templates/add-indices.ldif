@@ -1,27 +1,51 @@
-# Add database indices for performance
-# Common indices for user lookups
+# Configure database indices.
+# Variables: none
+#
+# This uses "replace" with a complete, explicit index policy rather than "add".
+#
+# The RPM-shipped configuration already defines olcDbIndex values for {2}mdb:
+#
+#   olcDbIndex: objectClass eq,pres
+#   olcDbIndex: ou,cn,mail,surname,givenname eq,pres,sub
+#
+# Adding a second definition for the same attribute is rejected outright with
+# "duplicate index definition for attr <name>", which makes the whole modify
+# fail atomically. Because that failure was previously swallowed by "|| true",
+# the image shipped with whatever indices the RPM happened to define - notably
+# without an entryCSN or entryUUID index, which syncrepl searches on constantly.
+#
+# Attribute names in an index definition ARE validated against the loaded
+# schema, and the only schema loaded by default is core.schema. This is why
+# memberOf is NOT indexed here: the memberOf attribute type does not exist
+# until the memberof overlay is loaded, and overlays are configured *after*
+# this step, so listing it fails with
+#   index attribute "memberOf" undefined
+#
+# If you enable ENABLE_MEMBEROF=true and query on memberOf heavily, add the
+# index after startup (the overlay will have defined the attribute by then):
+#
+#   docker exec -i <container> ldapmodify -Y EXTERNAL -H ldapi:/// <<'EOF'
+#   dn: olcDatabase={2}mdb,cn=config
+#   changetype: modify
+#   add: olcDbIndex
+#   olcDbIndex: memberOf eq
+#   EOF
+#
+# ALIASES of the same attribute DO collide. core.schema defines
+# "2.5.4.4 NAME ( 'sn' 'surname' )", so listing both sn and surname triggers
+# "duplicate index definition for attr surname". Use exactly one name per
+# attribute type: sn (not sn + surname), givenName (not givenName + gn),
+# uid (not uid + userid), mail (not mail + rfc822Mailbox).
+#
+# This step runs on first initialisation, while the database is still empty, so
+# replacing the index set does not require reindexing existing data.
 dn: olcDatabase={2}mdb,cn=config
 changetype: modify
-add: olcDbIndex
+replace: olcDbIndex
 olcDbIndex: objectClass eq
--
-add: olcDbIndex
-olcDbIndex: cn pres,eq,sub
--
-add: olcDbIndex
+olcDbIndex: ou,cn,sn,givenName pres,eq,sub
 olcDbIndex: uid pres,eq
--
-add: olcDbIndex
 olcDbIndex: mail pres,eq,sub
--
-add: olcDbIndex
-olcDbIndex: sn pres,eq,sub
--
-add: olcDbIndex
-olcDbIndex: givenName pres,eq,sub
--
-add: olcDbIndex
 olcDbIndex: member eq
--
-add: olcDbIndex
-olcDbIndex: memberOf eq
+olcDbIndex: entryCSN eq
+olcDbIndex: entryUUID eq

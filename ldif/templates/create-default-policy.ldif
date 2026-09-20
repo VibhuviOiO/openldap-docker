@@ -1,12 +1,13 @@
-# Create default password policy
+# Create the default password policy entry.
 # Variables: LDAP_BASE_DN
-
-# First create the parent OU for policies
-dn: ou=Policies,{{LDAP_BASE_DN}}
-objectClass: organizationalUnit
-ou: Policies
-
-# Create the default password policy entry
+#
+# The parent ou=Policies is created separately by create-policies-ou.ldif.
+#
+# pwdMinLength is enforced without any check module. pwdCheckQuality: 1 means
+# "check quality if possible, otherwise accept": with no olcPPolicyCheckModule
+# configured (none is available in the base package) the quality checks beyond
+# length are inert. Setting pwdCheckQuality: 2 without a check module would
+# reject every password, so 1 is deliberate. See README "Password Policy".
 dn: cn=default,ou=Policies,{{LDAP_BASE_DN}}
 objectClass: pwdPolicy
 objectClass: person

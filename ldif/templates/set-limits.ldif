@@ -1,8 +1,25 @@
 # Set query limits to prevent DoS
+# Variables: LDAP_ADMIN_DN, LDAP_BASE_DN, QUERY_SIZE_SOFT, QUERY_SIZE_HARD
+#
+# Service accounts are exempted from the size limit. This matters: syncrepl is
+# subject to the access privileges AND the limits of its bind identity, so a
+# replication account governed by size.hard would silently build a PARTIAL
+# replica. The OpenLDAP 2.6 Administrator's Guide is explicit that "the search
+# limits must be high enough on the provider to allow the syncuser to retrieve
+# a complete copy of the requested content".
+#
+# NOTE: any non-exempt bind is silently truncated at QUERY_SIZE_HARD. Clients
+# must use RFC 2696 paged results, or bind as a service account.
 dn: olcDatabase={2}mdb,cn=config
 changetype: modify
 add: olcLimits
-olcLimits: dn.base="{{LDAP_ADMIN_DN}}" size=unlimited time=unlimited
+olcLimits: dn.exact="{{LDAP_ADMIN_DN}}" size=unlimited time=unlimited
 -
 add: olcLimits
-olcLimits: users size=500 size.hard=1000 time=30 time.hard=60
+olcLimits: dn.exact="cn=replicator,{{LDAP_BASE_DN}}" size.soft=unlimited size.hard=unlimited time.soft=unlimited time.hard=unlimited
+-
+add: olcLimits
+olcLimits: dn.exact="cn=monitor,{{LDAP_BASE_DN}}" size.soft=unlimited size.hard=unlimited time.soft=unlimited time.hard=unlimited
+-
+add: olcLimits
+olcLimits: users size.soft={{QUERY_SIZE_SOFT}} size.hard={{QUERY_SIZE_HARD}} time=30 time.hard=60

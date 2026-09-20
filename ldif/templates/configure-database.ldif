@@ -8,7 +8,7 @@ olcSuffix: {{LDAP_BASE_DN}}
 replace: olcRootDN
 olcRootDN: {{LDAP_ADMIN_DN}}
 -
-add: olcRootPW
+replace: olcRootPW
 olcRootPW: {{ADMIN_HASH}}
 -
 replace: olcDbMaxSize
