@@ -1,4 +1,4 @@
-FROM almalinux:9.7
+FROM almalinux:10.2
 ARG OPENLDAP_VERSION=""
 LABEL org.opencontainers.image.title="OpenLDAP"
 LABEL org.opencontainers.image.description="Production-ready OpenLDAP container with multi-master replication, TLS support, and enterprise features"
