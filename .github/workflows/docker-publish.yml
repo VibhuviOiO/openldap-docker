@@ -28,6 +28,21 @@ jobs:
           echo "openldap-version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "OpenLDAP version: ${VERSION}"
 
+      # The tag and the VERSION file both become image tags, so a mismatch
+      # publishes the same build under two different OpenLDAP versions and
+      # silently repoints the one the chart pins.
+      - name: Tag must match VERSION
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(cat VERSION | tr -d '[:space:]')
+          case "$tag" in
+            "$version"|"$version"-[0-9]*) ;;
+            *) echo "::error::tag ${GITHUB_REF_NAME} does not match VERSION ${version}"; exit 1 ;;
+          esac
+          echo "tag ${GITHUB_REF_NAME} matches VERSION ${version}"
+
   publish:
     name: Build & Push
     needs: version

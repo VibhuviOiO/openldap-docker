@@ -39,8 +39,11 @@ jobs:
           docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 \
             startup.sh scripts/*.sh tests/integration/*.sh
 
-  single-node:
-    name: Single-node scenarios
+  # One job, one image build. Splitting these into separate jobs built the same
+  # `--no-cache` image twice per run, and each run happens twice per merge
+  # (pull_request and push to main), so a merge cost four full builds.
+  integration:
+    name: Integration scenarios
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -52,25 +55,10 @@ jobs:
       - name: Run single-node integration scenarios
         run: bash tests/integration/single-node.sh openldap:ci
 
-      - name: Dump container logs on failure
-        if: failure()
-        run: |
-          for c in $(docker ps -a --filter "name=ldapci" --format '{{.Names}}'); do
-            echo "===== $c ====="
-            docker logs "$c" 2>&1 | tail -40 || true
-          done
-
-  replication:
-    name: 3-node replication
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Build image
-        run: docker build --no-cache -t openldap:ci .
-
+      # always(): a single-node failure must not hide whether replication also
+      # broke. The job still fails on the earlier step's result.
       - name: Run 3-node replication integration test
+        if: always()
         run: bash tests/integration/replication.sh openldap:ci
 
       - name: Dump container logs on failure

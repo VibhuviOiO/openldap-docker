@@ -181,9 +181,10 @@ restore:
 
 ## ldapcheck: Validate replication configuration and convergence
 # Usage: make ldapcheck [CONTAINER_NAME=openldap] [PEERS=node2,node3]
+# With no PEERS the container's own REPLICATION_PEERS is used.
 ldapcheck:
 	@echo "$(BLUE)Running replication validation...$(RESET)"
-	@docker exec $(CONTAINER_NAME) /usr/local/bin/scripts/ldapcheck.sh $(if $(PEERS),--peers "$(PEERS)",) \
+	@docker exec $(CONTAINER_NAME) /usr/local/bin/scripts/ldapcheck.sh --peers $(PEERS) \
 		|| (echo "$(RED)✗ Validation reported problems$(RESET)" && exit 1)
 
 ## test-integration: Run the single-node integration scenarios against the built image

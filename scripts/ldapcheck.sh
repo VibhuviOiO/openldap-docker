@@ -7,6 +7,7 @@ set -eo pipefail
 #   ldapcheck.sh                 # local configuration checks only
 #   ldapcheck.sh --peers node2,node3
 #                                # also compare contextCSN against each peer
+#   ldapcheck.sh --peers         # derive the peer list from REPLICATION_PEERS
 #   ldapcheck.sh --peers n2,n3 --deep
 #                                # also compare entry counts (reads every entry)
 #
@@ -23,6 +24,7 @@ LDAP_PORT="${LDAP_PORT:-389}"
 LDAPI="ldapi:///"
 
 PEERS=""
+PEERS_FROM_RUNTIME=false
 DEEP=false
 
 PASS_COUNT=0
@@ -32,7 +34,20 @@ FAILED_CHECKS=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --peers) PEERS="$2"; shift 2 ;;
+        --peers)
+            # A bare --peers means "use the peers this node already replicates
+            # from", which is the only sane thing to ask for inside the
+            # container. The old form was `PEERS="$2"; shift 2`, and with
+            # --peers as the last argument `shift 2` failed under `set -e`,
+            # exiting 1 with no output at all.
+            if [ $# -ge 2 ] && [ "${2#-}" = "$2" ]; then
+                PEERS="$2"
+                shift 2
+            else
+                PEERS_FROM_RUNTIME=true
+                shift
+            fi
+            ;;
         --peers=*) PEERS="${1#*=}"; shift ;;
         --deep) DEEP=true; shift ;;
         -h|--help)
@@ -46,6 +61,38 @@ done
 if [ -f "$RUNTIME_ENV" ]; then
     # shellcheck disable=SC1090
     . "$RUNTIME_ENV"
+fi
+
+# Resolve a bare --peers now that the runtime env has been read. Empty is not an
+# error: a node without peers (a standalone provider, or one that has not been
+# configured yet) is a legitimate thing to run this against, and a diagnostic
+# tool that refuses to report anything at all is worse than one that says why it
+# skipped a section.
+PEERS_FROM_RUNTIME_EMPTY=false
+if [ "$PEERS_FROM_RUNTIME" = true ]; then
+    PEERS="${REPLICATION_PEERS:-}"
+    if [ -z "$PEERS" ]; then
+        PEERS_FROM_RUNTIME_EMPTY=true
+    fi
+fi
+
+# Honour a password file exactly as startup.sh does.
+#
+# A `docker exec` or `kubectl exec` process does not inherit the container's
+# loaded secrets: PID 1 reads LDAP_ADMIN_PASSWORD_FILE into LDAP_ADMIN_PASSWORD
+# and never exports it back to the container environment. Without this the peer
+# checks are unusable in every secrets-file deployment, which is the recommended
+# way to run this image under Docker secrets or Kubernetes.
+if [ -z "${LDAP_ADMIN_PASSWORD:-}" ] && [ -n "${LDAP_ADMIN_PASSWORD_FILE:-}" ]; then
+    if [ -r "$LDAP_ADMIN_PASSWORD_FILE" ]; then
+        # tr, matching startup.sh: strip CR/LF rather than trusting the file to
+        # end without a newline. `kubectl create secret --from-file` and
+        # `echo pw > f` both leave one behind.
+        LDAP_ADMIN_PASSWORD=$(tr -d '\n\r' < "$LDAP_ADMIN_PASSWORD_FILE")
+        export LDAP_ADMIN_PASSWORD
+    else
+        echo "warning: LDAP_ADMIN_PASSWORD_FILE=${LDAP_ADMIN_PASSWORD_FILE} is not readable" >&2
+    fi
 fi
 
 BASE_DN="${LDAP_BASE_DN:-}"
@@ -239,7 +286,11 @@ echo
 if [ -z "$PEERS" ]; then
     echo "PEER CONVERGENCE"
     echo "----------------"
-    skip "no --peers given; local checks only"
+    if [ "$PEERS_FROM_RUNTIME_EMPTY" = true ]; then
+        skip "--peers given but REPLICATION_PEERS is empty; local checks only"
+    else
+        skip "no --peers given; local checks only"
+    fi
 else
     echo "PEER CONVERGENCE"
     echo "----------------"
