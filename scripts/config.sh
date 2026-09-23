@@ -308,12 +308,24 @@ configure_audit_log() {
     chown ldap:ldap /logs/audit.log
     chmod 640 /logs/audit.log
     
-    # Load auditlog module if not already loaded
+    # Load auditlog module if not already loaded.
+    #
+    # The entry only exists if another overlay loaded a module first, so this
+    # mirrors memberof and ppolicy: append when it exists, create it when it does
+    # not. Always modifying it made ENABLE_AUDIT_LOG=true an unconditional
+    # startup failure ("ldap_modify: No such object (32)") for any deployment
+    # that did not also enable memberof, refint, ppolicy or replication.
     if ! ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=module{0},cn=config" 2>/dev/null | grep -q "auditlog.la"; then
         log_step "Loading auditlog module..."
-        local module_ldif=$(get_ldif_path "add-auditlog-overlay")
-        cp "$LDIF_TEMPLATE_DIR/add-auditlog-overlay.ldif" "$module_ldif"
-        apply_ldif_modify "$module_ldif" -Y EXTERNAL -H ldapi:///
+        if ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=module{0},cn=config" -s base 2>/dev/null | grep -q "dn: cn=module{0},cn=config"; then
+            local auditlog_module_ldif=$(get_ldif_path "add-auditlog-module")
+            cp "$LDIF_TEMPLATE_DIR/add-auditlog-module.ldif" "$auditlog_module_ldif"
+            apply_ldif_modify "$auditlog_module_ldif" -Y EXTERNAL -H ldapi:///
+        else
+            local auditlog_module_ldif=$(get_ldif_path "load-auditlog-module")
+            cp "$LDIF_TEMPLATE_DIR/load-auditlog-module.ldif" "$auditlog_module_ldif"
+            apply_ldif_add "$auditlog_module_ldif" -Y EXTERNAL -H ldapi:///
+        fi
     fi
     
     # Add auditlog overlay

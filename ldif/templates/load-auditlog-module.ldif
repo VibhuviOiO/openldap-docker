@@ -1,0 +1,11 @@
+# Create the module entry with auditlog.la as its first module
+# Variables: none
+#
+# Used when cn=module{0},cn=config does NOT exist yet, i.e. auditlog is the only
+# overlay enabled. Applying add-auditlog-module.ldif here fails with
+# "No such object (32)" and, since the LDIF processor now reports failures,
+# takes the whole container down.
+dn: cn=module{0},cn=config
+objectClass: olcModuleList
+cn: module{0}
+olcModuleLoad: auditlog.la
