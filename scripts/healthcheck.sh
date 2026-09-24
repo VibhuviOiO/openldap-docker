@@ -94,35 +94,52 @@ check_basic() {
 
 # --- tls ----------------------------------------------------------------------
 
+# True when something answered at the LDAP protocol layer over TLS.
+#
+# Certificate verification is disabled on purpose: the certificate is normally
+# self-signed, and "not in the local trust store" must not make a healthy
+# container report unhealthy forever.
+#
+# What this asks is "is the TLS listener serving?", NOT "did an anonymous bind
+# succeed". The two are not the same: with bind_anon disabled the server
+# answers an anonymous search with result 48, which still proves the handshake
+# completed. Requiring an anonymous bind here made every TLS install with
+# features.disableAnonymousBind=true fail its startup probe forever.
+#
+# ldapsearch exits 0 when the search succeeded, and with the LDAP result code
+# when the server replied but refused. It exits 255 (LDAP_SERVER_DOWN) or 1
+# when it cannot reach the listener at all. So these codes mean "the server
+# answered us over TLS"; anything else means it did not.
+tls_answered() {
+    local url="$1"; shift
+    local rc=0
+    LDAPTLS_REQCERT=never ldapsearch -x -H "$url" "$@" \
+        -b "" -s base "(objectClass=*)" >/dev/null 2>&1 || rc=$?
+
+    case "$rc" in
+        0)                return 0 ;;   # search succeeded
+        8|32|48|49|50|53) return 0 ;;   # server replied: strongAuth/absent/anon-denied/bad-creds/no-access/unwilling
+        *)                return 1 ;;   # no listener, or the handshake failed
+    esac
+}
+
 check_tls() {
     if [ "${LDAP_TLS_ENABLED:-false}" != "true" ]; then
         echo "SKIPPED: TLS not configured"
         return 0
     fi
 
-    # Verify with normal certificate checking first. If that fails we retry
-    # without verification, which distinguishes "the TLS listener is broken"
-    # from "the certificate is not in the local trust store" - the latter is
-    # the normal case for a self-signed certificate and must not make a
-    # perfectly healthy container report unhealthy forever.
-    if ldapsearch -x -H "ldaps://${LDAP_HOST}:${LDAPS_PORT}" -b "" -s base "(objectClass=*)" >/dev/null 2>&1; then
-        : # verified
-    elif LDAPTLS_REQCERT=never ldapsearch -x -H "ldaps://${LDAP_HOST}:${LDAPS_PORT}" -b "" -s base "(objectClass=*)" >/dev/null 2>&1; then
-        echo "OK: LDAPS is serving (certificate not trusted by the default trust store; expected for self-signed)"
-        return 0
-    else
+    if ! tls_answered "ldaps://${LDAP_HOST}:${LDAPS_PORT}"; then
         echo "FAILED: LDAPS on port ${LDAPS_PORT} is not answering"
         return 1
     fi
 
-    if ! ldapsearch -x -ZZ -H "ldap://${LDAP_HOST}:${LDAP_PORT}" -b "" -s base "(objectClass=*)" >/dev/null 2>&1; then
-        if ! LDAPTLS_REQCERT=never ldapsearch -x -ZZ -H "ldap://${LDAP_HOST}:${LDAP_PORT}" -b "" -s base "(objectClass=*)" >/dev/null 2>&1; then
-            echo "FAILED: StartTLS on port ${LDAP_PORT} failed"
-            return 1
-        fi
+    if ! tls_answered "ldap://${LDAP_HOST}:${LDAP_PORT}" -ZZ; then
+        echo "FAILED: StartTLS on port ${LDAP_PORT} failed"
+        return 1
     fi
 
-    echo "OK"
+    echo "OK: LDAPS and StartTLS are serving"
     return 0
 }
 
