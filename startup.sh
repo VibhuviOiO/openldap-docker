@@ -216,8 +216,14 @@ write_runtime_env() {
         printf 'LDAP_BASE_DN=%s\n' "$LDAP_BASE_DN"
         printf 'LDAP_ADMIN_DN=%s\n' "$LDAP_ADMIN_DN"
         printf 'SERVER_ID=%s\n' "$SERVER_ID"
-        printf 'REPLICATION_PEERS=%s\n' "${REPLICATION_PEERS:-}"
-        printf 'REPLICATION_SERVER_IDS=%s\n' "${REPLICATION_SERVER_IDS:-}"
+        # Both values are list-shaped and both consumers SOURCE this file
+        # rather than parse it. REPLICATION_PEERS is space-separated in the
+        # docker-compose use-cases, so an unquoted write produced
+        # `REPLICATION_PEERS=a b` - the shell then ran `b` as a command. With
+        # `set -e` the healthcheck died at exit 127 before a single check ran,
+        # and every multi-provider container stayed permanently unhealthy.
+        printf 'REPLICATION_PEERS=%q\n' "${REPLICATION_PEERS:-}"
+        printf 'REPLICATION_SERVER_IDS=%q\n' "${REPLICATION_SERVER_IDS:-}"
         printf 'ENABLE_REPLICATION=%s\n' "$ENABLE_REPLICATION"
         printf 'ENABLE_MONITORING=%s\n' "$ENABLE_MONITORING"
         printf 'ENABLE_MEMBEROF=%s\n' "$ENABLE_MEMBEROF"
