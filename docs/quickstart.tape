@@ -2,8 +2,10 @@
 #
 #   vhs docs/quickstart.tape
 #
-# Commands only - no echo, no banners. A real session does not type headings,
-# and the output identifies each step well enough on its own.
+# One Type per command, one Enter. Do NOT split a command across several
+# Type/Enter pairs with a trailing backslash: each Enter submits the line,
+# so the shell runs a fragment at a time. The terminal wraps long lines on
+# its own, the same way it does for a real user.
 
 Output docs/openldap-quickstart.gif
 
@@ -28,51 +30,25 @@ Set PlaybackSpeed 1.0
 
 Require docker
 
-# Clear any previous container off camera.
 Hide
 Type "docker rm -f openldap-demo >/dev/null 2>&1; clear"
 Enter
 Sleep 1s
 Show
 
-Type "docker run -d --name openldap-demo \\"
-Enter
-Sleep 250ms
-Type "  -e LDAP_DOMAIN=example.com \\"
-Enter
-Sleep 250ms
-Type "  -e LDAP_ORGANIZATION='Example Org' \\"
-Enter
-Sleep 250ms
-Type "  -e LDAP_ADMIN_PASSWORD='ChangeMe_StrongP@ssw0rd123!' \\"
-Enter
-Sleep 250ms
-Type "  -e LDAP_CONFIG_PASSWORD='ChangeMe_StrongP@ssw0rd123!' \\"
-Enter
-Sleep 250ms
-Type "  -e INCLUDE_SCHEMAS=cosine,inetorgperson,nis \\"
-Enter
-Sleep 250ms
-Type "  -p 127.0.0.1:16389:389 \\"
-Enter
-Sleep 250ms
-Type "  vibhuvioio/openldap:2.6.10"
+Type "docker run -d --name openldap-demo -e LDAP_DOMAIN=example.com -e LDAP_ORGANIZATION='Example Org' -e LDAP_ADMIN_PASSWORD='ChangeMe_StrongP@ssw0rd123!' -e LDAP_CONFIG_PASSWORD='ChangeMe_StrongP@ssw0rd123!' -e INCLUDE_SCHEMAS=cosine,inetorgperson,nis -p 127.0.0.1:16389:389 vibhuvioio/openldap:2.6.10"
 Enter
 Sleep 25s
 
-Type "docker exec openldap-demo ldapsearch -LLL -Y EXTERNAL -H ldapi:/// \\"
-Enter
-Sleep 250ms
-Type "  -b cn=schema,cn=config dn | grep '^dn:'"
+Type "docker exec openldap-demo ldapsearch -LLL -Y EXTERNAL -H ldapi:/// -b cn=schema,cn=config dn | grep '^dn:'"
 Enter
 Sleep 7s
 
-Type "docker exec -i openldap-demo ldapadd -x -H ldap://localhost \\"
+# A heredoc is the one case where several Enters are correct: each one is a
+# line of the LDIF, not a separate command.
+Type "docker exec -i openldap-demo ldapadd -x -H ldap://localhost -D 'cn=Manager,dc=example,dc=com' -w 'ChangeMe_StrongP@ssw0rd123!' <<'LDIF'"
 Enter
-Sleep 250ms
-Type "  -D 'cn=Manager,dc=example,dc=com' -w 'ChangeMe_StrongP@ssw0rd123!' <<'LDIF'"
-Enter
-Sleep 500ms
+Sleep 400ms
 Type "dn: uid=asmith,dc=example,dc=com"
 Enter
 Sleep 200ms
@@ -95,33 +71,15 @@ Type "LDIF"
 Enter
 Sleep 6s
 
-Type "docker exec openldap-demo ldapsearch -LLL -x -H ldap://localhost \\"
-Enter
-Sleep 250ms
-Type "  -D 'cn=Manager,dc=example,dc=com' -w 'ChangeMe_StrongP@ssw0rd123!' \\"
-Enter
-Sleep 250ms
-Type "  -b 'dc=example,dc=com' '(uid=asmith)' dn cn mail"
+Type "docker exec openldap-demo ldapsearch -LLL -x -H ldap://localhost -D 'cn=Manager,dc=example,dc=com' -w 'ChangeMe_StrongP@ssw0rd123!' -b 'dc=example,dc=com' '(uid=asmith)' dn cn mail"
 Enter
 Sleep 7s
 
-Type "docker exec openldap-demo ldapdelete -x -H ldap://localhost \\"
-Enter
-Sleep 250ms
-Type "  -D 'cn=Manager,dc=example,dc=com' -w 'ChangeMe_StrongP@ssw0rd123!' \\"
-Enter
-Sleep 250ms
-Type "  'uid=asmith,dc=example,dc=com'"
+Type "docker exec openldap-demo ldapdelete -x -H ldap://localhost -D 'cn=Manager,dc=example,dc=com' -w 'ChangeMe_StrongP@ssw0rd123!' 'uid=asmith,dc=example,dc=com'"
 Enter
 Sleep 4s
 
-Type "docker exec openldap-demo ldapsearch -LLL -x -H ldap://localhost \\"
-Enter
-Sleep 250ms
-Type "  -D 'cn=Manager,dc=example,dc=com' -w 'ChangeMe_StrongP@ssw0rd123!' \\"
-Enter
-Sleep 250ms
-Type "  -b 'dc=example,dc=com' '(uid=asmith)' dn | grep -c '^dn:'"
+Type "docker exec openldap-demo ldapsearch -LLL -x -H ldap://localhost -D 'cn=Manager,dc=example,dc=com' -w 'ChangeMe_StrongP@ssw0rd123!' -b 'dc=example,dc=com' '(uid=asmith)' dn | grep -c '^dn:'"
 Enter
 Sleep 5s
 
