@@ -56,3 +56,6 @@ tests/local/logs/
 *.tar.gz
 *.zip
 .secrets/
+# GIF tooling - agg is a 15MB binary, and casts are intermediate
+tools/agg
+*.cast
