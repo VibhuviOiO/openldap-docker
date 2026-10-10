@@ -37,7 +37,7 @@ jobs:
           exit-code: "0"
 
       - name: Upload Trivy scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         if: always()
         with:
           sarif_file: trivy-results.sarif
@@ -77,7 +77,7 @@ jobs:
             "${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.digest }}"
 
       - name: Generate SBOM with Syft
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           image: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.org_lower }}/${{ env.IMAGE_NAME }}:latest
           format: spdx-json
