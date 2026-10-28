@@ -142,6 +142,7 @@ docker run -d \
 | `LDAP_CONFIG_PASSWORD` | `config` | `cn=config` password |
 | `LDAP_ADMIN_PASSWORD_FILE` | - | Read the admin password from a file (Docker secrets) |
 | `LDAP_CONFIG_PASSWORD_FILE` | - | Read the config password from a file |
+| `INCLUDE_SCHEMAS` | - | Comma-separated schemas to load at boot, e.g. `cosine,inetorgperson,nis` |
 | `ENABLE_REPLICATION` | `false` | Enable multi-provider replication |
 | `SERVER_ID` | `1` | Server ID. **Must be set explicitly when replication is enabled** |
 | `REPLICATION_PEERS` | - | Comma-separated peer hostnames (must not include this node) |
@@ -184,6 +185,36 @@ See the [Configuration Guide](https://vibhuvioio.com/openldap-docker/configurati
 | `/etc/openldap/slapd.d` | Configuration |
 | `/logs` | Audit log (`audit.log`). slapd itself logs to stdout — use `docker logs` |
 | `/custom-schema` | Custom LDIF schemas |
+
+### Loading schemas
+
+OpenLDAP ships the standard schemas as files but does not load them. Without
+loading one first, an entry that uses its attributes is rejected:
+
+```
+ldapadd: no objectClass attribute: inetOrgPerson
+```
+
+Most OpenLDAP images leave you to run `ldapadd` against `cn=schema,cn=config` by
+hand after every rebuild. Set `INCLUDE_SCHEMAS` and the schema is present before
+the first bind:
+
+```bash
+docker run -d -p 389:389 \
+  -e LDAP_DOMAIN=example.com \
+  -e LDAP_ADMIN_PASSWORD=secret \
+  -e INCLUDE_SCHEMAS=cosine,inetorgperson,nis \
+  vibhuvioio/openldap:2.6.10
+```
+
+Names refer to `/etc/openldap/schema/<name>.ldif` in the image — `cosine`,
+`inetorgperson`, `nis`, `misc`, `ppolicy`, `dyngroup` and the rest of the
+standard set. Whitespace around commas is trimmed, so `cosine, inetorgperson`
+works.
+
+Order matters for dependencies: `inetorgperson` requires `cosine`, so list
+`cosine` first. It is loaded before the domain entry is created, not after.
+
 | `/docker-entrypoint-initdb.d` | Initialization scripts |
 
 ### Database Size Limit
